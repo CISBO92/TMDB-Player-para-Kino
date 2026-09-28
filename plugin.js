@@ -81,7 +81,7 @@ export async function episodes(ref) {
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORREGIDA PARA EVITAR EL SOURCE ERROR!
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORRECCIÓN DEFINITIVA DE DIRECCIÓN!
  */
 export async function resolve(ref) {
   await null;
@@ -99,8 +99,10 @@ export async function resolve(ref) {
     urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}?primaryColor=e50914`;
   }
 
-  // SOLUCIÓN AL SOURCE ERROR: Cambiamos 'url' por 'webpage' para cargar el iframe directamente en Kino
+  // CORRECCIÓN: Entregamos 'url' (obligatorio para evitar dirección inválida) 
+  // pero le sumamos la propiedad 'webpage' para indicarle a Kino que use el motor web integrado
   return {
+    url: urlDestino,
     webpage: urlDestino
   };
 }
