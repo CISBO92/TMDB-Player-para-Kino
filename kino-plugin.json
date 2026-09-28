@@ -1,14 +1,13 @@
 {
   "id": "tmdb-hybrid-catalog",
   "name": "TMDB Hybrid Catalog",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Catálogo estético impulsado por la API de TMDB con enlaces de video estables y directos de alta velocidad sin bloqueos de red.",
+  "description": "Catálogo estético impulsado por la API de TMDB con enlaces de video estables y directos de alta velocidad.",
   "hosts": [
     "api.themoviedb.org",
     "themoviedb.org",
-    "googleapis.com",
     "://googleapis.com"
   ],
   "capabilities": [
