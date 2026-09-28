@@ -1,5 +1,5 @@
 const SERVIDORES = {
-  vidlink: "https://vidlink.pro"
+  icu: "https://vidsrc.icu"
 };
 
 /**
@@ -29,8 +29,8 @@ export async function search(query) {
 export async function episodes(ref) {
   await null;
   const parts = ref.split("|");
-  const kind = parts[0];
-  const tmdbId = parts[1];
+  const kind = parts;
+  const tmdbId = parts;
 
   if (!tmdbId || tmdbId === "0") {
     throw kino.error("not_found", "No se pueden mapear episodios sin un ID de TMDB válido.");
@@ -70,7 +70,7 @@ export async function episodes(ref) {
           season: s,
           number: i,
           ref: `tv|${tmdbId}|${s}|${i}`,
-          title: `T${s} - Episodio ${i} (Espejo de respaldo)`
+          title: `T${s} - Episodio ${i} (Servidor alternativo)`
         });
       }
     }
@@ -80,32 +80,31 @@ export async function episodes(ref) {
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡COMPATIBILIDAD MÁXIMA MULTIMEDIA!
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORREGIDA CON NUEVO PROVEEDOR DESBLOQUEADO!
  */
 export async function resolve(ref) {
   await null;
   const parts = ref.split("|");
-  const kind = parts[0];
-  const tmdbId = parts[1];
+  const kind = parts;
+  const tmdbId = parts;
 
   let urlDestino = "";
 
   if (kind === "movie") {
-    urlDestino = `${SERVIDORES.vidlink}/movie/${tmdbId}`;
+    urlDestino = `${SERVIDORES.icu}/movie/${tmdbId}`;
   } else {
-    const temporada = parts[2] || "1";
-    const episodio = parts[3] || "1";
-    urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}`;
+    const temporada = parts || "1";
+    const episodio = parts || "1";
+    urlDestino = `${SERVIDORES.icu}/tv/${tmdbId}/${temporada}/${episodio}`;
   }
 
-  // Devolvemos el formato exacto de transmisión HLS para el reproductor interno 
-  // usando cabeceras de simulación de navegador para omitir los bloqueos perimetrales.
+  // Devolvemos las propiedades que Kino y el reproductor necesitan para romper las restricciones de protección web
   return {
     url: urlDestino,
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-      "Referer": "https://vidlink.pro",
-      "Origin": "https://vidlink.pro"
+      "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+      "Referer": "https://vidsrc.icu",
+      "Origin": "https://vidsrc.icu"
     }
   };
 }
