@@ -6,7 +6,7 @@ const SERVIDORES = {
  * 1. CAPACIDAD DE BÚSQUEDA (search)
  */
 export async function search(query) {
-  await null; 
+  await null; // Evita el Rejection Trap inicial de QuickJS
   if (!query.q && !query.tmdbId) return [];
 
   const idEstable = query.tmdbId ? `tmdb-${query.tmdbId}` : `q-${encodeURIComponent(query.q)}`;
@@ -24,19 +24,20 @@ export async function search(query) {
 }
 
 /**
- * 2. CAPACIDAD DE EPISODIOS (episodes) - ¡CORREGIDA URL DEL HOST!
+ * 2. CAPACIDAD DE EPISODIOS (episodes)
  */
 export async function episodes(ref) {
   await null;
-  const [kind, tmdbId, title] = ref.split("|");
+  const parts = ref.split("|");
+  const kind = parts[0];
+  const tmdbId = parts[1];
 
   if (!tmdbId || tmdbId === "0") {
     throw kino.error("not_found", "No se pueden mapear episodios sin un ID de TMDB válido.");
   }
 
-  // Usamos el host autorizado que Kino solicitó en su pantalla de error
+  // Petición asíncrona usando la API key global estable
   const urlTMDB = `https://themoviedb.org{tmdbId}?api_key=c5e7b154746f363065a6e811f5fae448&language=es-MX`;
-  
   let listaEpisodios = [];
 
   try {
@@ -47,7 +48,7 @@ export async function episodes(ref) {
       const temporadas = datosSerie.seasons || [];
 
       for (const temp of temporadas) {
-        if (temp.season_number === 0) continue; 
+        if (temp.season_number === 0) continue; // Ignorar contenido especial o extras
         
         for (let i = 1; i <= temp.episode_count; i++) {
           listaEpisodios.push({
@@ -63,7 +64,7 @@ export async function episodes(ref) {
     listaEpisodios = [];
   }
 
-  // Respaldo de emergencia si falla la API externa
+  // Generador de respaldo automático por si TMDB está caído o satura la IP
   if (listaEpisodios.length === 0) {
     for (let s = 1; s <= 2; s++) { 
       for (let i = 1; i <= 10; i++) { 
@@ -71,7 +72,7 @@ export async function episodes(ref) {
           season: s,
           number: i,
           ref: `tv|${tmdbId}|${s}|${i}`,
-          title: `T${s} - Episodio ${i} (Servidor alternativo)`
+          title: `T${s} - Episodio ${i} (Espejo de respaldo)`
         });
       }
     }
@@ -81,7 +82,7 @@ export async function episodes(ref) {
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORRECCIÓN DEFINITIVA DE DIRECCIÓN!
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve)
  */
 export async function resolve(ref) {
   await null;
@@ -99,8 +100,7 @@ export async function resolve(ref) {
     urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}?primaryColor=e50914`;
   }
 
-  // CORRECCIÓN: Entregamos 'url' (obligatorio para evitar dirección inválida) 
-  // pero le sumamos la propiedad 'webpage' para indicarle a Kino que use el motor web integrado
+  // Retorno dual corregido: 'url' satisface la sintaxis y 'webpage' inyecta el reproductor embebido
   return {
     url: urlDestino,
     webpage: urlDestino
