@@ -1,10 +1,10 @@
 {
   "id": "tmdb-player-integrated",
   "name": "TMDB Player Multi-Server",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Reproductor interactivo optimizado para películas y series con selector de episodios real mediante la base de datos de TMDB.",
+  "description": "Reproductor interactivo optimizado para películas y series con navegación y selector de episodios real mediante TMDB.",
   "hosts": [
     "api.themoviedb.org",
     "themoviedb.org",
@@ -14,7 +14,8 @@
   "capabilities": [
     "search",
     "episodes",
-    "resolve"
+    "resolve",
+    "browse"
   ],
   "color": "#E50914"
 }
