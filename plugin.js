@@ -6,7 +6,7 @@ const SERVIDORES = {
  * 1. CAPACIDAD DE BÚSQUEDA (search)
  */
 export async function search(query) {
-  await null; // Evita el Rejection Trap inicial de QuickJS
+  await null; 
   if (!query.q && !query.tmdbId) return [];
 
   const idEstable = query.tmdbId ? `tmdb-${query.tmdbId}` : `q-${encodeURIComponent(query.q)}`;
@@ -36,7 +36,6 @@ export async function episodes(ref) {
     throw kino.error("not_found", "No se pueden mapear episodios sin un ID de TMDB válido.");
   }
 
-  // Petición asíncrona usando la API key global estable
   const urlTMDB = `https://themoviedb.org{tmdbId}?api_key=c5e7b154746f363065a6e811f5fae448&language=es-MX`;
   let listaEpisodios = [];
 
@@ -48,7 +47,7 @@ export async function episodes(ref) {
       const temporadas = datosSerie.seasons || [];
 
       for (const temp of temporadas) {
-        if (temp.season_number === 0) continue; // Ignorar contenido especial o extras
+        if (temp.season_number === 0) continue; 
         
         for (let i = 1; i <= temp.episode_count; i++) {
           listaEpisodios.push({
@@ -64,7 +63,6 @@ export async function episodes(ref) {
     listaEpisodios = [];
   }
 
-  // Generador de respaldo automático por si TMDB está caído o satura la IP
   if (listaEpisodios.length === 0) {
     for (let s = 1; s <= 2; s++) { 
       for (let i = 1; i <= 10; i++) { 
@@ -82,7 +80,7 @@ export async function episodes(ref) {
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve)
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORRECCIÓN CON ACTION BROWSE!
  */
 export async function resolve(ref) {
   await null;
@@ -93,16 +91,17 @@ export async function resolve(ref) {
   let urlDestino = "";
 
   if (kind === "movie") {
-    urlDestino = `${SERVIDORES.vidlink}/movie/${tmdbId}?primaryColor=e50914`;
+    urlDestino = `${SERVIDORES.vidlink}/movie/${tmdbId}?primaryColor=e50914&autoplay=true`;
   } else {
     const temporada = parts[2] || "1";
     const episodio = parts[3] || "1";
-    urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}?primaryColor=e50914`;
+    urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}?primaryColor=e50914&autoplay=true`;
   }
 
-  // Retorno dual corregido: 'url' satisface la sintaxis y 'webpage' inyecta el reproductor embebido
+  // SOLUCIÓN TOTAL: Le indicamos a Kino que ejecute la acción de navegación web interactiva (browse)
+  // Esto salta el reproductor de video rígido y abre el iframe nativo con sus controles y anuncios bloqueados
   return {
-    url: urlDestino,
-    webpage: urlDestino
+    action: "browse",
+    url: urlDestino
   };
 }
