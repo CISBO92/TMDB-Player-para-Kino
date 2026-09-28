@@ -1,10 +1,10 @@
 {
   "id": "tmdb-player-integrated",
   "name": "TMDB Player Multi-Server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Flujo automatizado de películas y series directamente en Kino utilizando servidores espejo HD independientes (VidSrc, VidLink y 2Embed).",
+  "description": "Películas y series en HD con selector de episodios y subtítulos automáticos en español/inglés a través de servidores espejo independientes.",
   "hosts": [
     "api.themoviedb.org",
     "vidsrc.to",
@@ -14,6 +14,7 @@
   ],
   "capabilities": [
     "search",
+    "episodes",
     "resolve",
     "download"
   ],
