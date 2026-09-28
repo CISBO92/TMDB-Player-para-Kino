@@ -1,20 +1,18 @@
 {
-  "id": "tmdb-player-integrated",
-  "name": "TMDB Player Multi-Server",
-  "version": "1.8.0",
+  "id": "tmdb-hybrid-catalog",
+  "name": "TMDB Hybrid Catalog",
+  "version": "2.0.0",
   "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Reproductor optimizado para películas y series con inyección de iframe web interactivo y selector de episodios mediante TMDB.",
+  "description": "Catálogo estético impulsado por la API de TMDB con enlaces de video estables y directos de alta velocidad.",
   "hosts": [
     "api.themoviedb.org",
     "themoviedb.org",
-    "vidsrc.to",
-    "vidlink.pro"
+    "://googleapis.com"
   ],
   "capabilities": [
     "search",
-    "episodes",
     "resolve"
   ],
-  "color": "#E50914"
+  "color": "#12E29F"
 }
