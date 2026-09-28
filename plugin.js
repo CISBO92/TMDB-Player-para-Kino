@@ -1,33 +1,32 @@
 /**
  * Base de datos interna de tus enlaces de video directos.
- * Como desarrollador, aquí es donde irás añadiendo los IDs de TMDB de las películas 
- * y sus correspondientes enlaces puros (.mp4 o .m3u8).
+ * Vinculamos el ID de TMDB de "Silent Hill: Ascension" (237305) al video directo de prueba.
  */
 const MIS_VIDEOS = {
-  "550": { // ID de TMDB para "El Club de la Pelea" (Fight Club) como ejemplo
+  "237305": { 
     url: "https://googleapis.com",
     mime: "video/mp4"
   },
-  "272": { // ID de TMDB para "Batman Inicia" (Batman Begins) como ejemplo
+  "550": { // ID de TMDB para "El Club de la Pelea" (Fight Club) de respaldo
     url: "https://googleapis.com",
     mime: "video/mp4"
   }
 };
 
-// Enlace de respaldo por si el usuario busca una película que aún no has agregado a tu lista
+// Enlace de respaldo por si buscas un título que no está registrado arriba
 const VIDEO_RESPALDO = "https://googleapis.com";
 
 /**
  * 1. CAPACIDAD DE BÚSQUEDA (search)
- * Consulta a TMDB para pintar la interfaz de Kino con pósteres y metadatos elegantes.
+ * Consulta a TMDB para inyectar la interfaz de Kino con las sinopsis y pósteres.
  */
 export async function search(query) {
-  // Evita el Rejection Trap inicial exigido por el motor QuickJS de Kino
+  // Evita el Rejection Trap inicial exigido por el motor QuickJS de Kino [1.2]
   await null; 
 
   if (!query.q && !query.tmdbId) return [];
 
-  // Si Kino ya nos provee el ID de TMDB (porque el usuario abrió el título desde el catálogo interno)
+  // Si Kino ya nos provee el ID de TMDB directamente desde la interfaz
   if (query.tmdbId) {
     return [{
       id: `tmdb-${query.tmdbId}`,
@@ -39,7 +38,7 @@ export async function search(query) {
     }];
   }
 
-  // Si el usuario escribe texto en el buscador, consultamos dinámicamente a la API de TMDB
+  // Búsqueda dinámica en los servidores oficiales de la API de TMDB
   const urlTMDB = `https://themoviedb.org{encodeURIComponent(query.q)}&language=es-MX`;
   
   try {
@@ -48,7 +47,7 @@ export async function search(query) {
       const data = res.json();
       const resultados = data.results || [];
       
-      // Mapeamos los resultados de TMDB al formato exacto que exige el catálogo de Kino
+      // Mapeamos los resultados de TMDB al contrato de datos exigido por Kino
       return resultados.map(pelicula => ({
         id: `tmdb-${pelicula.id}`,
         ref: `movie|${pelicula.id}`,
@@ -59,7 +58,6 @@ export async function search(query) {
       }));
     }
   } catch (err) {
-    // Si la API de TMDB falla, no rompemos la app, devolvemos un array vacío
     return [];
   }
 
@@ -68,32 +66,24 @@ export async function search(query) {
 
 /**
  * 2. CAPACIDAD DE RESOLUCIÓN (resolve)
- * Toma el ID de la película y entrega el archivo multimedia directo libre de encriptación.
+ * Entrega a Kino la ruta multimedia directa sin encriptación.
  */
 export async function resolve(ref) {
-  await null;
+  // Inicialización asíncrona obligatoria
+  await null; 
   
   const [kind, tmdbId] = ref.split("|");
   
-  // Buscamos si tenemos esa película en nuestra base de datos de enlaces limpios
+  // Verificamos si el ID de TMDB (ej. 237305) existe en nuestro mapa de videos directos
   const videoEncontrado = MIS_VIDEOS[tmdbId];
-  
-  if (videoEncontrado) {
-    return {
-      url: videoEncontrado.url,
-      mime: videoEncontrado.mime,
-      headers: {
-        "User-Agent": `KinoApp/${kino.appVersion} (Hybrid-Catalog-Dev)`
-      }
-    };
-  }
+  let urlFinal = videoEncontrado ? videoEncontrado.url : VIDEO_RESPALDO;
+  let mimeFinal = videoEncontrado ? videoEncontrado.mime : "video/mp4";
 
-  // Si no la tienes agregada aún, reproduce el video de respaldo para demostrar que el plugin no falla
   return {
-    url: VIDEO_RESPALDO,
-    mime: "video/mp4",
+    url: urlFinal,
+    mime: mimeFinal,
     headers: {
-      "User-Agent": `KinoApp/${kino.appVersion} (Hybrid-Catalog-Dev)`
+      "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
     }
   };
 }
