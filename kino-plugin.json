@@ -1,15 +1,15 @@
 {
   "id": "tmdb-player-integrated",
   "name": "TMDB Player Multi-Server",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Reproductor optimizado para películas y series con selector de episodios real utilizando clústeres API desbloqueados de Vidsrc.",
+  "description": "Reproductor optimizado para películas y series con inyección de iframe web interactivo y selector de episodios mediante TMDB.",
   "hosts": [
     "api.themoviedb.org",
     "themoviedb.org",
-    "vidsrc.icu",
-    "vidsrc.to"
+    "vidsrc.to",
+    "vidlink.pro"
   ],
   "capabilities": [
     "search",
