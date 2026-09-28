@@ -1,0 +1,21 @@
+{
+  "id": "tmdb-player-integrated",
+  "name": "TMDB Player Multi-Server",
+  "version": "1.0.0",
+  "apiVersion": 2,
+  "entry": "plugin.js",
+  "description": "Flujo automatizado de películas y series directamente en Kino utilizando servidores espejo HD independientes (VidSrc, VidLink y 2Embed).",
+  "hosts": [
+    "api.themoviedb.org",
+    "vidsrc.to",
+    "vidsrcme.ru",
+    "vidlink.pro",
+    "2embed.cc"
+  ],
+  "capabilities": [
+    "search",
+    "resolve",
+    "download"
+  ],
+  "color": "#E50914"
+}
