@@ -80,7 +80,7 @@ export async function episodes(ref) {
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORRECCIÓN CON ACTION BROWSE!
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡COMPATIBILIDAD MÁXIMA MULTIMEDIA!
  */
 export async function resolve(ref) {
   await null;
@@ -91,17 +91,21 @@ export async function resolve(ref) {
   let urlDestino = "";
 
   if (kind === "movie") {
-    urlDestino = `${SERVIDORES.vidlink}/movie/${tmdbId}?primaryColor=e50914&autoplay=true`;
+    urlDestino = `${SERVIDORES.vidlink}/movie/${tmdbId}`;
   } else {
     const temporada = parts[2] || "1";
     const episodio = parts[3] || "1";
-    urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}?primaryColor=e50914&autoplay=true`;
+    urlDestino = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}`;
   }
 
-  // SOLUCIÓN TOTAL: Le indicamos a Kino que ejecute la acción de navegación web interactiva (browse)
-  // Esto salta el reproductor de video rígido y abre el iframe nativo con sus controles y anuncios bloqueados
+  // Devolvemos el formato exacto de transmisión HLS para el reproductor interno 
+  // usando cabeceras de simulación de navegador para omitir los bloqueos perimetrales.
   return {
-    action: "browse",
-    url: urlDestino
+    url: urlDestino,
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      "Referer": "https://vidlink.pro",
+      "Origin": "https://vidlink.pro"
+    }
   };
 }
