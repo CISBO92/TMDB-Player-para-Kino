@@ -1,5 +1,5 @@
 const SERVIDORES = {
-  icu: "https://vidsrc.icu"
+  vidsrc: "https://vidsrc.to"
 };
 
 /**
@@ -29,8 +29,8 @@ export async function search(query) {
 export async function episodes(ref) {
   await null;
   const parts = ref.split("|");
-  const kind = parts;
-  const tmdbId = parts;
+  const kind = parts[0];
+  const tmdbId = parts[1];
 
   if (!tmdbId || tmdbId === "0") {
     throw kino.error("not_found", "No se pueden mapear episodios sin un ID de TMDB válido.");
@@ -80,31 +80,30 @@ export async function episodes(ref) {
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORREGIDA CON NUEVO PROVEEDOR DESBLOQUEADO!
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡SOLUCIÓN AL SOURCE ERROR MEDIANTE INYECCIÓN WEB!
  */
 export async function resolve(ref) {
   await null;
   const parts = ref.split("|");
-  const kind = parts;
-  const tmdbId = parts;
+  const kind = parts[0];
+  const tmdbId = parts[1];
 
   let urlDestino = "";
 
   if (kind === "movie") {
-    urlDestino = `${SERVIDORES.icu}/movie/${tmdbId}`;
+    urlDestino = `${SERVIDORES.vidsrc}/movie/${tmdbId}`;
   } else {
-    const temporada = parts || "1";
-    const episodio = parts || "1";
-    urlDestino = `${SERVIDORES.icu}/tv/${tmdbId}/${temporada}/${episodio}`;
+    const temporada = parts[2] || "1";
+    const episodio = parts[3] || "1";
+    urlDestino = `${SERVIDORES.vidsrc}/tv/${tmdbId}/${temporada}/${episodio}`;
   }
 
-  // Devolvemos las propiedades que Kino y el reproductor necesitan para romper las restricciones de protección web
+  // Devolvemos el mapeo dual forzando el renderizado interactivo sin decodificación directa
   return {
     url: urlDestino,
+    webpage: urlDestino,
     headers: {
-      "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-      "Referer": "https://vidsrc.icu",
-      "Origin": "https://vidsrc.icu"
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
     }
   };
 }
