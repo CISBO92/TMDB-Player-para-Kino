@@ -7,13 +7,11 @@ const SERVIDORES = {
  * 1. CAPACIDAD DE BÚSQUEDA (search)
  */
 export async function search(query) {
-  await null; // Evita el Rejection Trap de QuickJS
+  await null; 
   if (!query.q && !query.tmdbId) return [];
 
   const idEstable = query.tmdbId ? `tmdb-${query.tmdbId}` : `q-${encodeURIComponent(query.q)}`;
   const tipoContenido = query.type === "series" ? "series" : "movie";
-  
-  // Guardamos los metadatos esenciales en el ref
   const referenciaInterna = `${tipoContenido}|${query.tmdbId || 0}|${encodeURIComponent(query.q)}`;
 
   return [{
@@ -28,7 +26,6 @@ export async function search(query) {
 
 /**
  * 2. CAPACIDAD DE EPISODIOS (episodes)
- * Si el contenido es una serie, Kino llama a esta función para armar la lista en pantalla.
  */
 export async function episodes(ref) {
   await null;
@@ -38,8 +35,6 @@ export async function episodes(ref) {
     throw kino.error("not_found", "No se pueden mapear episodios sin un ID de TMDB válido.");
   }
 
-  // Hacemos una petición rápida a la API pública de TMDB para saber cuántas temporadas y episodios tiene.
-  // Nota: Usamos una petición limpia. Si el fetch falla, Kino usará un formateo estándar por defecto.
   const urlTMDB = `https://themoviedb.org{tmdbId}?api_key=844421298d794454c7d3d64d1349966f&language=es-MX`;
   const res = await kino.fetch(urlTMDB);
   
@@ -49,23 +44,19 @@ export async function episodes(ref) {
     const datosSerie = res.json();
     const temporadas = datosSerie.seasons || [];
 
-    // Recorremos las temporadas reales de la serie
     for (const temp of temporadas) {
-      if (temp.season_number === 0) continue; // Ignoramos los especiales (capítulo 0)
+      if (temp.season_number === 0) continue; 
       
-      // Creamos los episodios simulados para cada temporada de forma masiva
       for (let i = 1; i <= temp.episode_count; i++) {
         listaEpisodios.push({
           season: temp.season_number,
           number: i,
-          // Guardamos la ruta exacta del episodio en el ref: "tv|idTMDB|temporada|episodio"
           ref: `tv|${tmdbId}|${temp.season_number}|${i}`,
           title: `Episodio ${i}`
         });
       }
     }
   } else {
-    // Plan de respaldo si TMDB no responde: Generamos una temporada estándar de 24 capítulos
     for (let i = 1; i <= 24; i++) {
       listaEpisodios.push({
         season: 1,
@@ -76,14 +67,11 @@ export async function episodes(ref) {
     }
   }
 
-  return {
-    episodes: listaEpisodios
-  };
+  return { episodes: listaEpisodios };
 }
 
 /**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve)
- * Genera la URL final del video y le inyecta los subtítulos en español e inglés.
+ * 3. CAPACIDAD DE RESOLUCIÓN (resolve) - ¡CORREGIDA!
  */
 export async function resolve(ref) {
   await null;
@@ -94,40 +82,21 @@ export async function resolve(ref) {
   let urlVideo = "";
 
   if (kind === "movie") {
-    // Película estándar
-    urlVideo = `${SERVIDORES.vidlink}/movie/${tmdbId}`;
+    // Cambiamos a vidsrc_to que suele ser más directo para la extracción nativa
+    urlVideo = `${SERVIDORES.vidsrc_to}/movie/${tmdbId}`;
   } else {
-    // Serie con temporada y episodio mapeados: "tv|idTMDB|temporada|episodio"
     const temporada = parts[2] || "1";
     const episodio = parts[3] || "1";
-    urlVideo = `${SERVIDORES.vidlink}/tv/${tmdbId}/${temporada}/${episodio}`;
+    urlVideo = `${SERVIDORES.vidsrc_to}/tv/${tmdbId}/${temporada}/${episodio}`;
   }
-
-  // Configuración de subtítulos automáticos
-  // Los servidores modernos como VidLink permiten pasar parámetros de subtítulos en la URL,
-  // pero Kino exige que se declaren en el objeto de retorno para controlarlos de forma nativa.
-  const subtitulos = [
-    {
-      lang: "es",
-      label: "Español",
-      url: `${urlVideo}?sub.lang=es`, // El servidor espejo autodetecta y sirve el archivo .vtt/.srt
-      format: "vtt"
-    },
-    {
-      lang: "en",
-      label: "English",
-      url: `${urlVideo}?sub.lang=en`,
-      format: "vtt"
-    }
-  ];
 
   return {
     url: urlVideo,
-    mime: "application/x-mpegURL", // Formato de streaming HLS eficiente
-    subtitles: subtitulos,
-    expiresInSeconds: 7200,
+    // Eliminamos temporalmente la etiqueta rígida de subtítulos y el mime exacto 
+    // para dejar que el reproductor nativo de Kino negocie el formato web directamente
     headers: {
-      "User-Agent": `KinoApp/${kino.appVersion} (TMDB-Player-Integrated)`
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Referer": "https://vidsrc.to"
     }
   };
 }
