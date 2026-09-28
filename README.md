@@ -1,2 +1,11 @@
-# TMDB-Player-para-Kino
-"Plugin multiserver independiente para la reproducción automatizada de películas y series en alta definición. Enlaza directamente el catálogo de Kino con los servidores espejo de VidSrc, VidLink y 2Embed."
+# TMDB Player para Kino 🎬
+
+Este es un plugin de código abierto para la aplicación **Kino**, adaptado a partir de la idea original de la extensión TMDB-Player. 
+
+## Características
+- 🚀 **Búsqueda automatizada:** Conexión directa mediante identificadores TMDB.
+- 📺 **Multi-Servidor:** Soporte para VidSrc, VidLink y 2Embed en resolución HD.
+- 📥 **Descargas nativas:** Compatible con el modo sin conexión de Kino en dispositivos móviles.
+
+## Instalación
+En la app Kino, ve a **Ajustes > Plugins**, introduce `tu-usuario/tu-repositorio` y pulsa **Agregar**.
