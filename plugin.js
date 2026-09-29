@@ -4,6 +4,7 @@ var TMDB_API = "https://themoviedb.org";
 var TMDB_IMAGE = "https://tmdb.org";
 var API_KEY = "e21fc412c324d60a57c7164fd063fcde";
 
+// Función de solicitud de red estable compatible con QuickJS
 function fetchTmdb(path) {
   var connector = path.indexOf("?") !== -1 ? "&" : "?";
   var url = TMDB_API + path + connector + "api_key=" + API_KEY + "&language=es-ES";
@@ -11,6 +12,7 @@ function fetchTmdb(path) {
     .then(function(r) { return r.json(); });
 }
 
+// Mapeador oficial con el prefijo exacto de nuestro ID
 function mapTmdbItem(x, forcedKind) {
   if (!x || !x.id) return null;
   var rawId = parseInt(x.id, 10);
@@ -28,7 +30,8 @@ function mapTmdbItem(x, forcedKind) {
   };
 }
 
-// FORMATO DE EXPORTACIÓN DIRECTO REQUERIDO POR EL ENTORNO DE DESARROLLO DE KINO
+// --- CAPABILITIES EXPORTADAS NATIVAMENTE ---
+
 export async function search(query) {
   var endpoint = query.type === "series" ? "/search/tv" : "/search/movie";
   return fetchTmdb(endpoint + "?query=" + encodeURIComponent(query.q))
@@ -71,6 +74,8 @@ export async function episodes(ref) {
 
 export async function resolve(ref) {
   var videoUrl = "";
+  
+  // Procesamiento seguro de texto plano libre de cierres inesperados
   if (ref.indexOf("tv-") === 0) {
     var parts = ref.split("-");
     videoUrl = "https://vidsrc.pm" + parts[1] + "/" + parts[2] + "/" + parts[3];
