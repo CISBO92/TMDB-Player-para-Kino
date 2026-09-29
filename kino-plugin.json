@@ -1,34 +1,16 @@
 {
   "id": "kino-tmdb-player",
   "name": "TMDB Player",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "apiVersion": 1,
   "entry": "plugin.js",
-  "description": "Explora el catálogo de TMDB y reproduce películas o series de forma directa.",
-  "author": "Desarrollador",
   "hosts": [
     "api.themoviedb.org",
     "image.tmdb.org",
-    "vidsrc.me",
-    "vidsrc.to",
-    "vidsrc.xyz",
-    "embed.su"
+    "vidsrc.to"
   ],
   "capabilities": [
     "search",
-    "home",
-    "browse",
-    "episodes",
     "resolve"
-  ],
-  "color": "#032541",
-  "settings": [
-    {
-      "key": "api_key",
-      "label": "TMDB API Key (Opcional)",
-      "type": "text",
-      "required": false,
-      "hint": "Deja en blanco para usar la clave del sistema"
-    }
   ]
 }
