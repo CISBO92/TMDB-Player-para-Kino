@@ -23,7 +23,7 @@ async function fetchTmdb(path) {
   if (r.status === 404) throw kino.error("not_found", "No se encontró el recurso en TMDB.");
   if (r.status === 429) throw kino.error("rate_limited", "Demasiadas peticiones a TMDB.");
   
-  // ¡Solución al error del token '<'!: Verificar que la respuesta sea JSON legítimo
+  // Verificar que la respuesta sea JSON legítimo
   const contentType = r.headers["content-type"] || "";
   if (!contentType.includes("application/json")) {
     kino.log("Error crítico: TMDB no devolvió JSON. Tipo recibido: " + contentType);
@@ -35,21 +35,27 @@ async function fetchTmdb(path) {
   return r.json();
 }
 
-// Mapea los resultados al formato estricto de Kino (Item)
+// Mapea los resultados al formato estricto de Kino (Item) protegiendo los tipos de datos
 function mapTmdbItem(x, forcedKind) {
+  // Aseguramos que el ID sea un entero limpio y válido de JavaScript, quitando cualquier flotante de Java
+  const rawId = parseInt(x.id, 10);
+  if (isNaN(rawId)) return null;
+
   const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
-  const id = `${kind}-${x.id}`;
+  const stringId = `${kind}-${rawId}`;
   
+  // Validar formato estricto del ID requerido por la guía de Kino: ^[A-Za-z0-9._~-]{1,128}\(if (!/^[A-Za-z0-9._~-]{1,128}\)/.test(stringId)) return null;
+
   return {
-    id: id,
-    ref: String(x.id),
-    title: x.title || x.name || "Sin título",
+    id: stringId,
+    ref: String(rawId),
+    title: String(x.title || x.name || "Sin título"),
     kind: kind,
-    year: x.release_date || x.first_air_date ? (x.release_date || x.first_air_date).substring(0, 4) : undefined,
+    year: x.release_date || x.first_air_date ? String(x.release_date || x.first_air_date).substring(0, 4) : undefined,
     poster: x.poster_path ? `${TMDB_IMAGE}${x.poster_path}` : undefined,
     backdrop: x.backdrop_path ? `${TMDB_IMAGE}${x.backdrop_path}` : undefined,
-    overview: x.overview || undefined,
-    ids: { tmdb: parseInt(x.id) } // Enriquecimiento automático de fichas
+    overview: x.overview ? String(x.overview) : undefined,
+    ids: { tmdb: rawId } // Mapeo seguro del ID nativo mapeado a entero plano
   };
 }
 
@@ -72,8 +78,9 @@ export async function search(query) {
   const data = await fetchTmdb(`${endpoint}?query=${encodeURIComponent(query.q)}${pageParam}`);
   
   const items = (data.results || [])
-    .filter(x => x.media_type !== "person")
-    .map(x => mapTmdbItem(x, forcedKind));
+    .filter(x => x.media_type !== "person" && x.id !== undefined)
+    .map(x => mapTmdbItem(x, forcedKind))
+    .filter(x => x !== null); // Descartar cualquier mapeo fallido o inválido
     
   return {
     items: items,
@@ -92,7 +99,7 @@ export async function home() {
         id: "tmdb-movies-popular",
         title: "Películas Populares",
         ref: "discover-movies",
-        items: moviesData.results.map(x => mapTmdbItem(x, "movie"))
+        items: moviesData.results.map(x => mapTmdbItem(x, "movie")).filter(x => x !== null)
       });
     }
   } catch (e) {
@@ -106,7 +113,7 @@ export async function home() {
         id: "tmdb-tv-popular",
         title: "Series Populares",
         ref: "discover-tv",
-        items: tvData.results.map(x => mapTmdbItem(x, "series"))
+        items: tvData.results.map(x => mapTmdbItem(x, "series")).filter(x => x !== null)
       });
     }
   } catch (e) {
@@ -126,7 +133,7 @@ export async function browse(ref, cursor) {
   const data = await fetchTmdb(`${endpoint}?page=${page}`);
   
   return {
-    items: (data.results || []).map(x => mapTmdbItem(x, forcedKind)),
+    items: (data.results || []).map(x => mapTmdbItem(x, forcedKind)).filter(x => x !== null),
     next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
   };
 }
@@ -179,13 +186,11 @@ export async function resolve(ref) {
   
   if (ref.startsWith("tv-")) {
     const parts = ref.split("-");
-    const tmdbId = parts[1];
-    const season = parts[2];
-    const episode = parts[3];
-    // Servidor de video vidsrc por defecto balanceado para series
+    const tmdbId = parts;
+    const season = parts;
+    const episode = parts;
     playerUrl = `https://vidsrc.to{tmdbId}/${season}/${episode}`;
   } else {
-    // Balanceado para películas usando el ID directo de TMDB
     playerUrl = `https://vidsrc.to{ref}`;
   }
   
