@@ -29,7 +29,7 @@ async function fetchTmdb(path) {
   return r.json();
 }
 
-// Mapeador corregido con la expresión regular limpia según el contrato de Kino
+// Mapeador corregido con la expresión de texto limpia exigida por el contrato de Kino
 function mapTmdbItem(x, forcedKind) {
   const rawId = parseInt(x.id, 10);
   if (isNaN(rawId)) return null;
@@ -37,8 +37,7 @@ function mapTmdbItem(x, forcedKind) {
   const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
   const stringId = kind + "-" + rawId;
   
-  // Expresión regular corregida para validar el patrón estricto del ID (^[A-Za-z0-9._~-]{1,128}\$)
-  if (!/^[A-Za-z0-9._~-]{1,128}\$/.test(stringId)) return null;
+  // Expresión regular estándar corregida para validar el patrón estricto del ID: ^[A-Za-z0-9._~-]{1,128}\(if (!/^[A-Za-z0-9._~-]{1,128}\)/.test(stringId)) return null;
 
   return {
     id: stringId,
@@ -173,7 +172,7 @@ export async function resolve(ref) {
   
   if (ref.startsWith("tv-")) {
     const parts = ref.split("-");
-    playerUrl = "https://vidsrc.to" + parts[1] + "/" + parts[2] + "/" + parts[3];
+    playerUrl = "https://vidsrc.to" + parts + "/" + parts + "/" + parts;
   } else {
     playerUrl = "https://vidsrc.to" + ref;
   }
