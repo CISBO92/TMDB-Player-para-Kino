@@ -15,8 +15,10 @@ function mapTmdbItem(x, forcedKind) {
   if (!x || !x.id) return null;
   var rawId = parseInt(x.id, 10);
   var kind = forcedKind || ((x.media_type === "tv" || x.first_air_date) ? "series" : "movie");
+  
+  // Usamos estrictamente el prefijo 'xuper:' para activar la interfaz de la pestaña
   return {
-    id: "tmdb-player-multi:" + kind + "-" + rawId,
+    id: "xuper:" + kind + "-" + rawId,
     ref: kind + "-" + rawId,
     title: String(x.title || x.name || "Sin título"),
     kind: kind,
@@ -48,7 +50,6 @@ export function episodes(ref) {
       var episodesList = [];
       var seasons = seriesData.seasons || [];
       
-      // Mapeamos los episodios estructurando la referencia para series de forma limpia
       for (var s = 0; s < seasons.length; s++) {
         if (seasons[s].season_number === 0) continue;
         var sNum = seasons[s].season_number;
@@ -72,18 +73,16 @@ export function resolve(ref) {
   return Promise.resolve().then(function() {
     var videoUrl = "";
     
-    // Verificamos si la petición proviene de un episodio de serie o de una película directa
     if (ref.indexOf("tv-") === 0) {
       var parts = ref.split("-");
-      // Formato de extracción de stream directo libre de Iframes HTML para series
+      // Servidor espejo directo que extrae el video en crudo (.mp4 o hls) para series
       videoUrl = "https://vidsrc.stream" + parts[1] + "?season=" + parts[2] + "&episode=" + parts[3];
     } else {
       var cleanId = ref.replace("movie-", "");
-      // Formato de extracción de stream directo libre de Iframes HTML para películas
+      // Servidor espejo directo que extrae el video en crudo (.mp4 o hls) para películas
       videoUrl = "https://vidsrc.stream" + cleanId;
     }
     
-    // Entregamos el flujo de red puro que el reproductor nativo de Kino sí puede abrir
     return {
       url: videoUrl,
       expiresInSeconds: 3600
