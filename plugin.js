@@ -1,7 +1,6 @@
 /// <reference path="./kino.d.ts" />
 
-// 1. CAPACIDAD DE BÚSQUEDA SÍNCRONA
-// Eliminamos la red. Respondemos instantáneamente inyectando el contrato que la app espera.
+// 1. CAPACIDAD DE BÚSQUEDA SÍNCRONA DIRECTA
 export function search(query) {
   if (!query || (!query.q && !query.tmdbId)) {
     return { items: [] };
@@ -16,7 +15,7 @@ export function search(query) {
   var textoTitulo = query.q ? String(query.q) : "Contenido Vinculado";
   var anoLimpio = query.year ? String(query.year) : "2026";
 
-  // Retornamos el objeto estructurado inmediatamente en texto plano
+  // Formato estricto requerido por el puente de la app
   return {
     items: [{
       id: "tmdb-player-multi:movie-" + idPlano,
@@ -24,13 +23,13 @@ export function search(query) {
       title: textoTitulo,
       kind: "movie",
       year: anoLimpio,
-      ids: { tmdb: idPlano } // El núcleo de Java usará este ID para rellenar los actores automáticamente
+      ids: { tmdb: idPlano }
     }]
   };
 }
 
-// 2. CAPACIDAD DE RESOLUCIÓN INSTANTÁNEA
-// Genera la ruta directa al servidor multimedia compatible sin esperas asíncronas
+// 2. CONTRATO DE RESOLUCIÓN MULTIMEDIA DIRECTA (resolve)
+// Responde de forma instantánea al reproductor nativo evitando cuelgues de red en Java
 export function resolve(ref) {
   if (!ref) {
     return { url: "" };
