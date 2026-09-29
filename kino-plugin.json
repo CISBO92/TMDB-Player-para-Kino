@@ -1,12 +1,11 @@
 {
   "id": "tmdb-player-multi",
   "name": "TMDB Player Multi-Server",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "apiVersion": 1,
   "entry": "plugin.js",
   "hosts": [
     "api.themoviedb.org",
-    "www.themoviedb.org",
     "image.tmdb.org",
     "vidsrc.to",
     "vidsrc.pm"
