@@ -2,32 +2,26 @@
 
 const TMDB_API = "https://themoviedb.org";
 const TMDB_IMAGE = "https://tmdb.org";
-// Tu API Key integrada de forma segura como respaldo principal
 const DEFAULT_API_KEY = "e21fc412c324d60a57c7164fd063fcde"; 
 
-// Obtiene la API Key (prioriza la del menú Configurar, si no, usa la tuya)
 function getApiKey() {
   const userKey = kino.config.get("api_key");
   return (userKey && userKey.trim()) ? userKey.trim() : DEFAULT_API_KEY;
 }
 
-// Llamada HTTP segura y protegida contra respuestas HTML inesperadas
 async function fetchTmdb(path) {
   const connector = path.includes("?") ? "&" : "?";
   const url = `${TMDB_API}${path}${connector}api_key=${getApiKey()}&language=es-ES`;
   
   const r = await kino.fetch(url, { timeoutMs: 15000 });
   
-  // Validaciones de códigos de estado HTTP estándar
   if (r.status === 401) throw kino.error("auth_required", "La API Key de TMDB es inválida o expiró.");
   if (r.status === 404) throw kino.error("not_found", "No se encontró el recurso en TMDB.");
   if (r.status === 429) throw kino.error("rate_limited", "Demasiadas peticiones a TMDB.");
   
-  // Verificar que la respuesta sea JSON legítimo
   const contentType = r.headers["content-type"] || "";
   if (!contentType.includes("application/json")) {
-    kino.log("Error crítico: TMDB no devolvió JSON. Tipo recibido: " + contentType);
-    throw kino.error("unavailable", "El servidor de TMDB devolvió una respuesta inválida (HTML). Intenta de nuevo.");
+    throw kino.error("unavailable", "El servidor de TMDB devolvió una respuesta inválida (HTML).");
   }
   
   if (!r.ok) throw kino.error("unavailable", `Error de TMDB: ${r.status}`);
@@ -35,16 +29,15 @@ async function fetchTmdb(path) {
   return r.json();
 }
 
-// Mapea los resultados al formato estricto de Kino (Item) protegiendo los tipos de datos
+// Mapeador ultra seguro libre de objetos 'ids' numéricos propensos a errores de conversión en Java
 function mapTmdbItem(x, forcedKind) {
-  // Aseguramos que el ID sea un entero limpio y válido de JavaScript, quitando cualquier flotante de Java
   const rawId = parseInt(x.id, 10);
   if (isNaN(rawId)) return null;
 
   const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
   const stringId = `${kind}-${rawId}`;
   
-  // Validar formato estricto del ID requerido por la guía de Kino: ^[A-Za-z0-9._~-]{1,128}\(if (!/^[A-Za-z0-9._~-]{1,128}\)/.test(stringId)) return null;
+  if (!/^[A-Za-z0-9._~-]{1,128}\$/.test(stringId)) return null;
 
   return {
     id: stringId,
@@ -54,14 +47,13 @@ function mapTmdbItem(x, forcedKind) {
     year: x.release_date || x.first_air_date ? String(x.release_date || x.first_air_date).substring(0, 4) : undefined,
     poster: x.poster_path ? `${TMDB_IMAGE}${x.poster_path}` : undefined,
     backdrop: x.backdrop_path ? `${TMDB_IMAGE}${x.backdrop_path}` : undefined,
-    overview: x.overview ? String(x.overview) : undefined,
-    ids: { tmdb: rawId } // Mapeo seguro del ID nativo mapeado a entero plano
+    overview: x.overview ? String(x.overview) : undefined
+    // Se elimina por completo el campo 'ids' para evitar el error 'Cannot convert java type' con decimales nativos
   };
 }
 
-// --- CAPABILITIES (KINO CONTRACT) ---
+// --- CAPABILITIES ---
 
-// 1. Buscador global
 export async function search(query) {
   let endpoint = "/search/multi";
   let forcedKind = null;
@@ -80,7 +72,7 @@ export async function search(query) {
   const items = (data.results || [])
     .filter(x => x.media_type !== "person" && x.id !== undefined)
     .map(x => mapTmdbItem(x, forcedKind))
-    .filter(x => x !== null); // Descartar cualquier mapeo fallido o inválido
+    .filter(x => x !== null);
     
   return {
     items: items,
@@ -88,7 +80,6 @@ export async function search(query) {
   };
 }
 
-// 2. Carruseles de la pantalla de inicio
 export async function home() {
   const rows = [];
   
@@ -103,7 +94,7 @@ export async function home() {
       });
     }
   } catch (e) {
-    kino.log("Error cargando películas populares:", e.message);
+    kino.log("Error en home movies:", e.message);
   }
   
   try {
@@ -117,13 +108,12 @@ export async function home() {
       });
     }
   } catch (e) {
-    kino.log("Error cargando series populares:", e.message);
+    kino.log("Error en home tv:", e.message);
   }
   
   return rows;
 }
 
-// 3. Paginación e interfaz de exploración ("Ver más")
 export async function browse(ref, cursor) {
   const page = cursor ? parseInt(cursor) : 1;
   const isTv = ref === "discover-tv";
@@ -138,14 +128,13 @@ export async function browse(ref, cursor) {
   };
 }
 
-// 4. Listado de temporadas y capítulos
 export async function episodes(ref) {
   const seriesData = await fetchTmdb(`/tv/${ref}`);
   const episodesList = [];
   const seasons = seriesData.seasons || [];
   
   for (const season of seasons) {
-    if (season.season_number === 0) continue; // Ignorar contenido especial sin orden lineal
+    if (season.season_number === 0) continue;
     
     try {
       const seasonData = await fetchTmdb(`/tv/${ref}/season/${season.season_number}`);
@@ -178,18 +167,13 @@ export async function episodes(ref) {
   };
 }
 
-// 5. Generación del enlace del reproductor
 export async function resolve(ref) {
-  await null; // Prevenir "rejection traps" en promesas síncronas
-  
+  await null; 
   let playerUrl = "";
   
   if (ref.startsWith("tv-")) {
     const parts = ref.split("-");
-    const tmdbId = parts;
-    const season = parts;
-    const episode = parts;
-    playerUrl = `https://vidsrc.to{tmdbId}/${season}/${episode}`;
+    playerUrl = `https://vidsrc.to{parts}/${parts}/${parts}`;
   } else {
     playerUrl = `https://vidsrc.to{ref}`;
   }
