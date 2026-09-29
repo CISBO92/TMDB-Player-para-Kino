@@ -1,23 +1,15 @@
 /// <reference path="./kino.d.ts" />
 
-var TMDB_API = "https://themoviedb.org";
+var TMDB_API = "https://api.themoviedb.org/3";
 var TMDB_IMAGE = "https://tmdb.org";
 var API_KEY = "e21fc412c324d60a57c7164fd063fcde";
 
-function fetchTmdb(path) {
-  var connector = path.indexOf("?") !== -1 ? "&" : "?";
-  var url = TMDB_API + path + connector + "api_key=" + API_KEY + "&language=es-ES";
-  return kino.fetch(url, { timeoutMs: 10000 })
-    .then(function(r) { return r.json(); });
-}
-
-// Mapeador ultra seguro a prueba de campos vacíos o nulos
+// Mapeador estricto optimizado para el motor en desarrollo
 function mapTmdbItem(x, forcedKind) {
   if (!x || !x.id) return null;
   var rawId = parseInt(x.id, 10);
-  var kind = forcedKind || ((x.media_type === "tv" || x.first_air_date) ? "series" : "movie");
+  var kind = forcedKind || "movie";
   
-  // Validación estricta para evitar errores con substring si la fecha no existe
   var releaseYear = undefined;
   var dateStr = x.release_date || x.first_air_date;
   if (dateStr && String(dateStr).length >= 4) {
@@ -36,8 +28,9 @@ function mapTmdbItem(x, forcedKind) {
   };
 }
 
+// --- CAPABILITIES EXPUESTAS DE FORMA DIRECTA ---
+
 export async function search(query) {
-  // Detectamos dinámicamente si la app está buscando una serie o película
   var endpoint = "/search/movie";
   var currentKind = "movie";
   
@@ -46,7 +39,11 @@ export async function search(query) {
     currentKind = "series";
   }
   
-  return fetchTmdb(endpoint + "?query=" + encodeURIComponent(query.q))
+  var url = TMDB_API + endpoint + "?query=" + encodeURIComponent(query.q) + "&api_key=" + API_KEY + "&language=es-ES";
+  
+  // Retorno directo sin almacenamiento intermedio para romper el bucle de las alertas de red
+  return kino.fetch(url, { timeoutMs: 10000 })
+    .then(function(r) { return r.json(); })
     .then(function(data) {
       if (!data || !data.results) return { items: [] };
       var mapped = [];
@@ -55,12 +52,16 @@ export async function search(query) {
         if (item) mapped.push(item);
       }
       return { items: mapped };
-    }).catch(function() { return { items: [] }; });
+    })
+    .catch(function() { return { items: [] }; });
 }
 
 export async function episodes(ref) {
   var id = ref.replace("series-", "").replace("tv-", "");
-  return fetchTmdb("/tv/" + id)
+  var url = TMDB_API + "/tv/" + id + "?api_key=" + API_KEY + "&language=es-ES";
+  
+  return kino.fetch(url, { timeoutMs: 10000 })
+    .then(function(r) { return r.json(); })
     .then(function(seriesData) {
       var episodesList = [];
       var seasons = seriesData.seasons || [];
