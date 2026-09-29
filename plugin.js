@@ -4,29 +4,21 @@ const TMDB_API = "https://themoviedb.org";
 const TMDB_IMAGE = "https://tmdb.org";
 const API_KEY = "e21fc412c324d60a57c7164fd063fcde"; 
 
-// Solicitud de red directa
 async function fetchTmdb(path) {
   const url = `${TMDB_API}${path}${path.includes("?") ? "&" : "?"}api_key=${API_KEY}&language=es-ES`;
   const r = await kino.fetch(url, { timeoutMs: 10000 });
-  
   if (!r.ok) throw kino.error("unavailable", "Error de red.");
   return r.json();
 }
 
-// Mapeador ultra seguro usando Literales de Plantilla contra el error '17.s'
 function mapTmdbItem(x) {
   if (!x || !x.id) return null;
-  
   const rawId = parseInt(x.id, 10);
   if (isNaN(rawId)) return null;
 
-  // Forzamos comillas invertidas estrictas. Evita la concatenación con '+' que rompe el motor QuickJS
-  const safeId = `movie-${rawId}`; 
-  const safeRef = String(rawId);
-
   return {
-    id: safeId,
-    ref: safeRef,
+    id: `movie-${rawId}`,
+    ref: String(rawId),
     title: String(x.title || x.name || "Sin título"),
     kind: "movie",
     year: x.release_date ? String(x.release_date).substring(0, 4) : undefined,
@@ -36,19 +28,32 @@ function mapTmdbItem(x) {
   };
 }
 
-// --- CAPABILITIES (CONTRATO MINIMALISTA) ---
+// PANTALLA DE INICIO: Obligatoria para que la versión 0.9.x muestre el plugin
+export async function home() {
+  await Promise.resolve();
+  const rows = [];
+  try {
+    const data = await fetchTmdb("/movie/popular");
+    if (data && data.results) {
+      rows.push({
+        id: "tmdb-popular-home",
+        title: "Películas Populares (TMDB)",
+        ref: "popular-movies",
+        items: data.results.map(x => mapTmdbItem(x)).filter(x => x !== null)
+      });
+    }
+  } catch (e) {
+    kino.log("Error en home:", e.message);
+  }
+  return rows;
+}
 
 export async function search(query) {
   await Promise.resolve();
   try {
     const data = await fetchTmdb(`/search/movie?query=${encodeURIComponent(query.q)}`);
     if (!data || !data.results) return { items: [] };
-
-    const items = data.results
-      .map(x => mapTmdbItem(x))
-      .filter(x => x !== null);
-      
-    return { items: items };
+    return { items: data.results.map(x => mapTmdbItem(x)).filter(x => x !== null) };
   } catch (error) {
     return { items: [] };
   }
@@ -57,12 +62,9 @@ export async function search(query) {
 export async function resolve(ref) {
   await Promise.resolve();
   try {
-    // Limpieza absoluta de la referencia para que no herede residuos de Java
     const cleanId = String(ref).replace("movie-", "").trim();
-    const finalUrl = `https://vidsrc.to{cleanId}`;
-    
     return {
-      url: finalUrl,
+      url: `https://vidsrc.to{cleanId}`,
       expiresInSeconds: 3600
     };
   } catch (err) {
