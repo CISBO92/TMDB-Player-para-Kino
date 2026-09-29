@@ -87,9 +87,5 @@ function resolve(ref) {
   });
 }
 
-// SOLUCIÓN AL RECONOCIMIENTO: Exportación limpia requerida por el cargador nativo de la app
-module.exports = {
-  search: search,
-  episodes: episodes,
-  resolve: resolve
-};
+// SOLUCIÓN DEFINITIVA: Formato oficial de exportación ESM limpio al final del documento
+export { search, episodes, resolve };
