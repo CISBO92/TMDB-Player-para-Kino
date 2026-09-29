@@ -1,167 +1,201 @@
-/**
- * URL "RAW" DEFINITIVA DE TU GITHUB GIST
- * El plugin consultará este enlace remotamente en tiempo real cada vez que se reproduzca contenido [1.2].
- */
-const URL_BASE_DATOS = "https://githubusercontent.com";
+/// <reference path="./kino.d.ts" />
 
-// Video de respaldo por si el servidor de Gist falla o la base de datos está vacía
-const VIDEO_RESPALDO = "http://ddns.net";
+const TMDB_API = "https://themoviedb.org";
+const TMDB_IMAGE = "https://tmdb.org";
+const DEFAULT_API_KEY = "8444212ba6be27e41adbb20a05c8531c"; // Clave pública demo o de respaldo
 
-/**
- * Función interna para conectarse a tu bloc de notas en la nube de forma asíncrona
- */
-async function obtenerNubePrivada() {
-  try {
-    const respuesta = await kino.fetch(URL_BASE_DATOS);
-    if (respuesta && respuesta.ok) {
-      return respuesta.json();
-    }
-  } catch (err) {
-    // Si falla el servidor remoto de Gist, devolvemos un mapa vacío para no congelar Kino
-  }
-  return {};
+// Helper para obtener la API Key configurada por el usuario o usar la de respaldo
+function getApiKey() {
+  const userKey = kino.config.get("api_key");
+  return (userKey && userKey.trim()) ? userKey.trim() : DEFAULT_API_KEY;
 }
 
-/**
- * 1. CAPACIDAD DE BÚSQUEDA (search)
- * Sincroniza las búsquedas con la API de TMDB para inyectar sinopsis y carátulas estéticas.
- */
+// Helper seguro para llamadas HTTP según las reglas de Kino.
+// El primer 'await' va al inicio para evitar romper el try/catch del llamador (rejection trap).
+async function fetchTmdb(path) {
+  const connector = path.includes("?") ? "&" : "?";
+  const url = `${TMDB_API}${path}${connector}api_key=${getApiKey()}&language=es-ES`;
+  
+  const r = await kino.fetch(url, { timeoutMs: 15000 });
+  
+  if (r.status === 401) throw kino.error("auth_required", "La API Key de TMDB es inválida o expiró.");
+  if (r.status === 404) throw kino.error("not_found", "No se encontró el recurso en TMDB.");
+  if (r.status === 429) throw kino.error("rate_limited", "Demasiadas peticiones a TMDB.");
+  if (!r.ok) throw kino.error("unavailable", `Error de TMDB: ${r.status}`);
+  
+  return r.json();
+}
+
+// Mapea un objeto de película/serie de TMDB al formato estricto 'Item' de Kino
+// Cumple con la regla de IDs: ^[A-Za-z0-9._~-]{1,128}\$
+function mapTmdbItem(x, forcedKind) {
+  const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
+  const id = `${kind}-${x.id}`; // Formato limpio: movie-1234 o series-5678
+  
+  return {
+    id: id,
+    ref: String(x.id), // Pasamos solo el ID numérico real a las funciones de resolución
+    title: x.title || x.name || "Sin título",
+    kind: kind,
+    year: x.release_date || x.first_air_date ? (x.release_date || x.first_air_date).substring(0, 4) : undefined,
+    poster: x.poster_path ? `${TMDB_IMAGE}${x.poster_path}` : undefined,
+    backdrop: x.backdrop_path ? `${TMDB_IMAGE}${x.backdrop_path}` : undefined,
+    overview: x.overview || undefined,
+    ids: { tmdb: parseInt(x.id) } // Enriquecimiento automático de ficha en Kino
+  };
+}
+
+// --- CAPABILITES REQUERIDAS ---
+
+// 1. Búsqueda de contenido (search)
 export async function search(query) {
-  await null; // Evita el Rejection Trap inicial exigido por QuickJS [1.2]
-
-  if (!query.q && !query.tmdbId) return [];
-
-  // Si abrimos la ficha técnica directamente desde el catálogo general interno
-  if (query.tmdbId) {
-    const esSerie = query.type === "series";
-    return [{
-      id: `tg-${query.tmdbId}`,
-      ref: `${esSerie ? "series" : "movie"}|${query.tmdbId}`,
-      title: query.q || "Contenido Privado",
-      kind: esSerie ? "series" : "movie",
-      year: query.year ? String(query.year) : undefined,
-      ids: { tmdb: query.tmdbId }
-    }];
+  let endpoint = "/search/multi";
+  let forcedKind = null;
+  
+  if (query.type === "movie") {
+    endpoint = "/search/movie";
+    forcedKind = "movie";
+  } else if (query.type === "series") {
+    endpoint = "/search/tv";
+    forcedKind = "series";
   }
+  
+  const pageParam = query.cursor ? `&page=${query.cursor}` : "";
+  const data = await fetchTmdb(`${endpoint}?query=${encodeURIComponent(query.q)}${pageParam}`);
+  
+  const items = (data.results || [])
+    .filter(x => x.media_type !== "person")
+    .map(x => mapTmdbItem(x, forcedKind));
+    
+  const nextPage = (data.page < data.total_pages) ? String(data.page + 1) : undefined;
+  
+  return {
+    items: items,
+    next: nextPage
+  };
+}
 
-  // Consulta dinámica en los servidores globales de TMDB (Películas y Series de anime)
-  const urlTMDB = `https://themoviedb.org{encodeURIComponent(query.q)}&language=es-MX`;
+// 2. Pantalla de Inicio (home)
+export async function home() {
+  // Envolvemos las solicitudes en bloques independientes para que si una falla, las demás rows carguen
+  const rows = [];
   
   try {
-    const res = await kino.fetch(urlTMDB);
-    if (res && res.ok) {
-      const data = res.json();
-      return (data.results || [])
-        .filter(item => item.media_type === "movie" || item.media_type === "tv")
-        .map(item => {
-          const esSerie = item.media_type === "tv";
-          return {
-            id: `tg-${item.id}`,
-            ref: `${esSerie ? "series" : "movie"}|${item.id}`,
-            title: item.title || item.name,
-            kind: esSerie ? "series" : "movie",
-            year: item.release_date || item.first_air_date ? (item.release_date || item.first_air_date).split("-") : undefined,
-            ids: { tmdb: item.id }
-          };
-        });
-    }
-  } catch (err) {
-    return [];
-  }
-  return [];
-}
-
-/**
- * 2. CAPACIDAD DE EPISODIOS (episodes)
- * Desglosa de forma automatizada las temporadas y capítulos reales usando los metadatos de TMDB.
- */
-export async function episodes(ref) {
-  await null;
-  const [kind, tmdbId] = ref.split("|");
-
-  if (kind !== "series") return { episodes: [] };
-
-  const urlTMDB = `https://themoviedb.org{tmdbId}?api_key=c5e7b154746f363065a6e811f5fae448&language=es-MX`;
-  let listaEpisodios = [];
-
-  try {
-    const res = await kino.fetch(urlTMDB);
-    if (res && res.ok) {
-      const datosSerie = res.json();
-      const temporadas = datosSerie.seasons || [];
-
-      for (const temp of temporadas) {
-        if (temp.season_number === 0) continue; // Ignoramos los capítulos especiales o extras
-        
-        for (let i = 1; i <= temp.episode_count; i++) {
-          listaEpisodios.push({
-            season: temp.season_number,
-            number: i,
-            ref: `tv|${tmdbId}|${temp.season_number}|${i}`,
-            title: `Episodio ${i}`
-          });
-        }
-      }
-    }
-  } catch (err) {
-    listaEpisodios = [];
-  }
-
-  // Plan de respaldo de emergencia si TMDB llega a saturar la IP
-  if (listaEpisodios.length === 0) {
-    for (let i = 1; i <= 24; i++) {
-      listaEpisodios.push({
-        season: 1,
-        number: i,
-        ref: `tv|${tmdbId}|1|${i}`,
-        title: `Episodio ${i}`
+    const moviesData = await fetchTmdb("/movie/popular");
+    if (moviesData.results && moviesData.results.length) {
+      rows.push({
+        id: "tmdb-movies-popular",
+        title: "Películas Populares (TMDB)",
+        ref: "discover-movies",
+        items: moviesData.results.map(x => mapTmdbItem(x, "movie"))
       });
     }
+  } catch (e) {
+    kino.log("Error cargando fila de películas populares", e.message);
   }
-
-  return { episodes: listaEpisodios };
+  
+  try {
+    const tvData = await fetchTmdb("/tv/popular");
+    if (tvData.results && tvData.results.length) {
+      rows.push({
+        id: "tmdb-tv-popular",
+        title: "Series Populares (TMDB)",
+        ref: "discover-tv",
+        items: tvData.results.map(x => mapTmdbItem(x, "series"))
+      });
+    }
+  } catch (e) {
+    kino.log("Error cargando fila de series populares", e.message);
+  }
+  
+  return rows;
 }
 
-/**
- * 3. CAPACIDAD DE RESOLUCIÓN (resolve)
- * Descarga dinámicamente tu JSON de Gist en tiempo real y extrae la ruta del video [1.2].
- */
-export async function resolve(ref) {
-  await null; 
-  const parts = ref.split("|");
-  const kind = parts[0];
-  const tmdbId = parts[1];
+// 3. Paginación de portadas / "Ver más" (browse)
+export async function browse(ref, cursor) {
+  const page = cursor ? parseInt(cursor) : 1;
+  let endpoint = ref === "discover-tv" ? "/tv/popular" : "/movie/popular";
+  let forcedKind = ref === "discover-tv" ? "series" : "movie";
+  
+  const data = await fetchTmdb(`${endpoint}?page=${page}`);
+  
+  return {
+    items: (data.results || []).map(x => mapTmdbItem(x, forcedKind)),
+    next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
+  };
+}
 
-  let urlFinal = VIDEO_RESPALDO;
-
-  // CONSULTA EN TIEMPO REAL: Viaja a tu enlace de Gist y descarga los links actualizados [1.2]
-  const miNubeDinamica = await obtenerNubePrivada();
-
-  if (kind === "movie") {
-    // Extracción para películas independientes
-    const contenido = miNubeDinamica[tmdbId];
-    if (contenido && !contenido.tv) {
-      urlFinal = contenido.url;
-    }
-  } else if (kind === "tv") {
-    // Extracción para series organizadas: "tv|tmdbId|temporada|episodio"
-    const season = parts[2];
-    const episode = parts[3];
-    const serieData = miNubeDinamica[tmdbId];
+// 4. Desglose de Temporadas y Episodios (episodes)
+export async function episodes(ref) {
+  // Primero obtenemos los detalles de la serie para saber cuántas temporadas tiene
+  const seriesData = await fetchTmdb(`/tv/${ref}`);
+  const episodesList = [];
+  
+  // Iteramos de manera segura por las temporadas de la serie
+  // Nota: Limitamos a peticiones simultáneas o consecutivas cuidando el límite de 60 peticiones de Kino
+  const seasons = seriesData.seasons || [];
+  
+  for (const season of seasons) {
+    // Saltamos la temporada 0 (Especiales) si deseas una lista limpia o la incluyes si la requieres. 
+    // La guía de Kino indica que los episodios deben numerarse desde el 1 en adelante.
+    if (season.season_number === 0) continue;
     
-    if (serieData && serieData.tv && serieData.episodios) {
-      const claveEpisodio = `${season}_${episode}`;
-      if (serieData.episodios[claveEpisodio]) {
-        urlFinal = serieData.episodios[claveEpisodio];
-      }
+    try {
+      const seasonData = await fetchTmdb(`/tv/${ref}/season/${season.season_number}`);
+      const eps = seasonData.episodes || [];
+      
+      eps.forEach(e => {
+        episodesList.push({
+          season: season.season_number,
+          number: e.episode_number,
+          ref: `tv-${ref}-${season.season_number}-${e.episode_number}`, // Ref estructurado para resolver luego
+          title: e.name || `Episodio ${e.episode_number}`,
+          overview: e.overview || undefined,
+          still: e.still_path ? `${TMDB_IMAGE}${e.still_path}` : undefined,
+          airDate: e.air_date || undefined
+        });
+      });
+    } catch (err) {
+      kino.log(`Error obteniendo la temporada ${season.season_number}`, err.message);
     }
   }
-
+  
   return {
-    url: urlFinal,
-    mime: "video/mp4",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-    }
+    series: {
+      title: seriesData.name,
+      overview: seriesData.overview,
+      poster: seriesData.poster_path ? `${TMDB_IMAGE}${seriesData.poster_path}` : undefined,
+      backdrop: seriesData.backdrop_path ? `${TMDB_IMAGE}${seriesData.backdrop_path}` : undefined
+    },
+    episodes: episodesList
+  };
+}
+
+// 5. Resolución de enlaces de reproducción (resolve)
+export async function resolve(ref) {
+  // El primer await asegura que el entorno asíncrono no cause fallos silenciosos no capturados.
+  await null; 
+  
+  let videoUrl = "";
+  
+  if (ref.startsWith("tv-")) {
+    // Formato de ref de series: tv-{tmdbId}-{season}-{episode}
+    const parts = ref.split("-");
+    const tmdbId = parts[1];
+    const season = parts[2];
+    const episode = parts[3];
+    
+    // Ejemplo usando la API/Embed pública de vidsrc.to para series
+    videoUrl = `https://vidsrc.to{tmdbId}/${season}/${episode}`;
+  } else {
+    // Para películas, el 'ref' directo es solo el ID de TMDB numérico enviado por mapTmdbItem
+    videoUrl = `https://vidsrc.to{ref}`;
+  }
+  
+  // Devolvemos el Stream estructurado para el reproductor interno de Kino
+  return {
+    url: videoUrl,
+    // Dejamos que Kino detecte el tipo (HLS/DASH/HTML5) automáticamente si el provider hace redirects internos
+    expiresInSeconds: 3600 
   };
 }
