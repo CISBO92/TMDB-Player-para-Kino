@@ -1,7 +1,7 @@
 {
-  "id": "vidsrc",
+  "id": "tmdb-player",
   "name": "TMDB Player",
-  "version": "1.3.0",
+  "version": "1.6.0",
   "apiVersion": 1,
   "entry": "plugin.js",
   "hosts": [
@@ -10,7 +10,6 @@
     "vidsrc.to"
   ],
   "capabilities": [
-    "home",
     "search",
     "resolve"
   ]
