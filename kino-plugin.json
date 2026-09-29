@@ -1,7 +1,7 @@
 {
   "id": "kino-tmdb-player",
   "name": "TMDB Player",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "apiVersion": 1,
   "entry": "plugin.js",
   "description": "Explora el catálogo de TMDB y reproduce películas o series de forma directa.",
