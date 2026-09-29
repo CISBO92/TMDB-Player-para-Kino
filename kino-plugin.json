@@ -1,18 +1,17 @@
 {
-  "id": "tmdb-hybrid-catalog",
-  "name": "TMDB Hybrid Catalog",
-  "version": "2.1.0",
-  "apiVersion": 2,
+  "id": "kino-x-stream-player",
+  "name": "Kino X-Stream Player",
+  "version": "3.0.0",
+  "apiVersion": 3,
   "entry": "plugin.js",
-  "description": "Catálogo estético impulsado por la API de TMDB con enlaces multimedia estables de alta velocidad.",
+  "description": "Plugin de aprendizaje para conectar Kino con flujos de transmisión IPTV y Xtream libres de publicidad.",
   "hosts": [
     "api.themoviedb.org",
-    "themoviedb.org",
-    "vjs.zencdn.net"
+    "themoviedb.org"
   ],
   "capabilities": [
     "search",
     "resolve"
   ],
-  "color": "#12E29F"
+  "color": "#FF9900"
 }
