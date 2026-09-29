@@ -1,6 +1,5 @@
 /**
  * Base de datos interna de tus enlaces de video directos.
- * Tu estructura original intacta.
  */
 const MIS_VIDEOS = {
   "237305": { 
@@ -13,113 +12,59 @@ const MIS_VIDEOS = {
   }
 };
 
-// Declaración estricta inmutable para evitar redefiniciones en QuickJS
-const TMDB_IMAGE_BASE = "https://tmdb.org";
-const TMDB_API_KEY = "e21fc412c324d60a57c7164fd063fcde";
-
 /**
- * 1. CAPACIDAD DE BÚSQUEDA Y ENRIQUECIMIENTO (search)
- * Diseñada para inyectar Elenco, Sinopsis y Tráilers nativos de forma segura.
+ * 1. CAPACIDAD DE BÚSQUEDA (search)
+ * Envia el objeto limpio estructurado. Kino TV se encargará de rellenar el elenco 
+ * y las fotos redondas en base a la propiedad 'ids: { tmdb: ... }'.
  */
 export async function search(query) {
   await null; 
 
   if (!query.q && !query.tmdbId) return [];
 
-  // SI KINO SOLICITA LOS METADATOS DE UNA FICHA VINCULADA
+  const keyApi = "e21fc412c324d60a57c7164fd063fcde";
+
   if (query.tmdbId) {
-    const idLimpio = String(query.tmdbId).replace("movie-", "").replace("series-", "");
-    const kind = query.kind || "movie";
-    const endpoint = (kind === "series") ? "/tv/" : "/movie/";
+    const cleanId = parseInt(String(query.tmdbId).replace("movie-", "").replace("series-", ""), 10);
+    const itemKind = query.kind || "movie";
     
-    const urlDetalles = "https://themoviedb.org" + endpoint + idLimpio + "?language=es-MX&api_key=" + TMDB_API_KEY + "&append_to_response=credits,videos";
-    
-    try {
-      const res = await kino.fetch(urlDetalles);
-      if (res && res.ok) {
-        const movieData = res.json();
-        
-        // 1. Mapeamos el Elenco (Fotos redondas de actores)
-        const elencoMapeado = [];
-        if (movieData.credits && movieData.credits.cast) {
-          const castLimit = Math.min(movieData.credits.cast.length, 12);
-          for (var c = 0; c < castLimit; c++) {
-            var actor = movieData.credits.cast[c];
-            elencoMapeado.push({
-              name: String(actor.name),
-              character: String(actor.character || "Actor"),
-              image: actor.profile_path ? (TMDB_IMAGE_BASE + actor.profile_path) : undefined
-            });
-          }
-        }
-
-        // 2. Mapeamos los Videos (Tráilers Oficiales)
-        const videosMapeados = [];
-        if (movieData.videos && movieData.videos.results) {
-          for (var v = 0; v < movieData.videos.results.length; v++) {
-            var video = movieData.videos.results[v];
-            if (video.site === "YouTube" && (video.type === "Trailer" || video.type === "Teaser")) {
-              videosMapeados.push({
-                title: String(video.name || "Tráiler Oficial"),
-                url: "https://youtube.com" + video.key,
-                mime: "video/mp4"
-              });
-            }
-          }
-        }
-
-        return [{
-          id: "tmdb:" + kind + "-" + idLimpio,
-          ref: kind + "|" + idLimpio,
-          title: String(movieData.title || movieData.name || query.q),
-          kind: kind,
-          year: (movieData.release_date || movieData.first_air_date) ? String(movieData.release_date || movieData.first_air_date).substring(0, 4) : undefined,
-          overview: movieData.overview ? String(movieData.overview) : undefined,
-          poster: movieData.poster_path ? (TMDB_IMAGE_BASE + movieData.poster_path) : undefined,
-          backdrop: movieData.backdrop_path ? (TMDB_IMAGE_BASE + movieData.backdrop_path) : undefined,
-          cast: elencoMapeado,
-          videos: videosMapeados,
-          ids: { tmdb: parseInt(idLimpio, 10) }
-        }];
-      }
-    } catch (e) {
-      kino.log("Error armando metadatos enriquecidos:", e.message);
-    }
-
     return [{
-      id: "tmdb:" + kind + "-" + idLimpio,
-      ref: kind + "|" + idLimpio,
-      title: query.q || "Contenido",
-      kind: kind,
+      id: "tmdb-player-multi:" + itemKind + "-" + cleanId,
+      ref: itemKind + "|" + cleanId,
+      title: query.q || "Contenido Vinculado",
+      kind: itemKind,
       year: query.year ? String(query.year) : undefined,
-      ids: { tmdb: parseInt(idLimpio, 10) }
+      ids: { tmdb: cleanId }
     }];
   }
 
-  // BÚSQUEDA GLOBAL MULTI-CATÁLOGO
-  const urlSearch = "https://themoviedb.org/search/movie?query=" + encodeURIComponent(query.q) + "&language=es-MX&api_key=" + TMDB_API_KEY;
+  const urlTMDB = "https://themoviedb.org" + encodeURIComponent(query.q) + "&language=es-MX&api_key=" + keyApi;
+  
   try {
-    const searchRes = await kino.fetch(urlSearch);
-    if (searchRes && searchRes.ok) {
-      const searchData = searchRes.json();
-      const resultados = searchData.results || [];
+    const res = await kino.fetch(urlTMDB);
+    if (res && res.ok) {
+      const data = res.json();
+      const resultados = data.results || [];
+      const imgBase = "https://tmdb.org";
       
-      const itemsMapeados = [];
+      const mapped = [];
       for (var i = 0; i < resultados.length; i++) {
         var pelicula = resultados[i];
-        itemsMapeados.push({
-          id: "tmdb:movie-" + pelicula.id,
-          ref: "movie|" + pelicula.id,
+        var idNum = parseInt(pelicula.id, 10);
+        
+        mapped.push({
+          id: "tmdb-player-multi:movie-" + idNum,
+          ref: "movie|" + idNum,
           title: String(pelicula.title),
           kind: "movie",
-          year: pelicula.release_date ? pelicula.release_date.substring(0, 4) : undefined,
-          poster: pelicula.poster_path ? (TMDB_IMAGE_BASE + pelicula.poster_path) : undefined,
-          backdrop: pelicula.backdrop_path ? (TMDB_IMAGE_BASE + pelicula.backdrop_path) : undefined,
-          overview: pelicula.overview ? String(pelicula.overview) : undefined,
-          ids: { tmdb: pelicula.id }
+          year: pelicula.release_date ? String(pelicula.release_date).substring(0, 4) : undefined,
+          poster: pelicula.poster_path ? (imgBase + pelicula.poster_path) : undefined,
+          backdrop: pelicula.backdrop_path ? (imgBase + pelicula.backdrop_path) : undefined,
+          overview: pelicula.overview ? String(platica.overview) : "",
+          ids: { tmdb: idNum }
         });
       }
-      return itemsMapeados;
+      return mapped;
     }
   } catch (err) {
     return [];
@@ -130,13 +75,15 @@ export async function search(query) {
 
 /**
  * 2. CAPACIDAD DE DESGLOSE DE EPISODIOS (episodes)
+ * Tu lógica original que mapeaba perfectamente la interfaz de los capítulos.
  */
 export async function episodes(ref) {
   await null;
   const parts = ref.split("|");
-  const tmdbId = parts[1];
+  const tmdbId = parseInt(parts, 10);
+  const keyApi = "e21fc412c324d60a57c7164fd063fcde";
   
-  const urlEpisodes = "https://themoviedb.org/tv/" + tmdbId + "?language=es-MX&api_key=" + TMDB_API_KEY;
+  const urlEpisodes = "https://themoviedb.org" + tmdbId + "?language=es-MX&api_key=" + keyApi;
   
   try {
     const res = await kino.fetch(urlEpisodes);
@@ -153,7 +100,7 @@ export async function episodes(ref) {
             season: sNum,
             number: e,
             ref: "series|" + tmdbId + "|" + sNum + "|" + e,
-            title: "T" + sNum + " - Episodio " + e + " (Espejo de respaldo)"
+            title: "Episodio " + e + " (Servidor TMDB)"
           });
         }
       }
@@ -163,20 +110,21 @@ export async function episodes(ref) {
       };
     }
   } catch (err) {
-    return { series: { title: "Película" }, episodes: [] };
+    return { series: { title: "Contenido" }, episodes: [] };
   }
-  return { series: { title: "Película" }, episodes: [] };
+  return { series: { title: "Contenido" }, episodes: [] };
 }
 
 /**
  * 3. CAPACIDAD DE RESOLUCIÓN MULTIMEDIA (resolve)
+ * Conecta de forma directa al streaming final de vidsrc.to
  */
 export async function resolve(ref) {
   await null; 
   
   const parts = ref.split("|");
-  const kind = parts[0];
-  const tmdbId = parts[1];
+  const kind = parts;
+  const tmdbId = parts;
   
   var urlFinal = "";
   var mimeFinal = "video/mp4";
@@ -186,8 +134,8 @@ export async function resolve(ref) {
     mimeFinal = MIS_VIDEOS[tmdbId].mime;
   } else {
     if (parts.length >= 4) {
-      var seasonNum = parts[2];
-      var episodeNum = parts[3];
+      var seasonNum = parts;
+      var episodeNum = parts;
       urlFinal = "https://vidsrc.to" + tmdbId + "/" + seasonNum + "/" + episodeNum;
     } else {
       urlFinal = "https://vidsrc.to" + tmdbId;
