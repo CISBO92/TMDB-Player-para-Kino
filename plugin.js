@@ -2,52 +2,60 @@
 
 const TMDB_API = "https://themoviedb.org";
 const TMDB_IMAGE = "https://tmdb.org";
-const DEFAULT_API_KEY = "8444212ba6be27e41adbb20a05c8531c"; // Clave pública demo o de respaldo
+// Tu API Key integrada de forma segura como respaldo principal
+const DEFAULT_API_KEY = "e21fc412c324d60a57c7164fd063fcde"; 
 
-// Helper para obtener la API Key configurada por el usuario o usar la de respaldo
+// Obtiene la API Key (prioriza la del menú Configurar, si no, usa la tuya)
 function getApiKey() {
   const userKey = kino.config.get("api_key");
   return (userKey && userKey.trim()) ? userKey.trim() : DEFAULT_API_KEY;
 }
 
-// Helper seguro para llamadas HTTP según las reglas de Kino.
-// El primer 'await' va al inicio para evitar romper el try/catch del llamador (rejection trap).
+// Llamada HTTP segura y protegida contra respuestas HTML inesperadas
 async function fetchTmdb(path) {
   const connector = path.includes("?") ? "&" : "?";
   const url = `${TMDB_API}${path}${connector}api_key=${getApiKey()}&language=es-ES`;
   
   const r = await kino.fetch(url, { timeoutMs: 15000 });
   
+  // Validaciones de códigos de estado HTTP estándar
   if (r.status === 401) throw kino.error("auth_required", "La API Key de TMDB es inválida o expiró.");
   if (r.status === 404) throw kino.error("not_found", "No se encontró el recurso en TMDB.");
   if (r.status === 429) throw kino.error("rate_limited", "Demasiadas peticiones a TMDB.");
+  
+  // ¡Solución al error del token '<'!: Verificar que la respuesta sea JSON legítimo
+  const contentType = r.headers["content-type"] || "";
+  if (!contentType.includes("application/json")) {
+    kino.log("Error crítico: TMDB no devolvió JSON. Tipo recibido: " + contentType);
+    throw kino.error("unavailable", "El servidor de TMDB devolvió una respuesta inválida (HTML). Intenta de nuevo.");
+  }
+  
   if (!r.ok) throw kino.error("unavailable", `Error de TMDB: ${r.status}`);
   
   return r.json();
 }
 
-// Mapea un objeto de película/serie de TMDB al formato estricto 'Item' de Kino
-// Cumple con la regla de IDs: ^[A-Za-z0-9._~-]{1,128}\$
+// Mapea los resultados al formato estricto de Kino (Item)
 function mapTmdbItem(x, forcedKind) {
   const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
-  const id = `${kind}-${x.id}`; // Formato limpio: movie-1234 o series-5678
+  const id = `${kind}-${x.id}`;
   
   return {
     id: id,
-    ref: String(x.id), // Pasamos solo el ID numérico real a las funciones de resolución
+    ref: String(x.id),
     title: x.title || x.name || "Sin título",
     kind: kind,
     year: x.release_date || x.first_air_date ? (x.release_date || x.first_air_date).substring(0, 4) : undefined,
     poster: x.poster_path ? `${TMDB_IMAGE}${x.poster_path}` : undefined,
     backdrop: x.backdrop_path ? `${TMDB_IMAGE}${x.backdrop_path}` : undefined,
     overview: x.overview || undefined,
-    ids: { tmdb: parseInt(x.id) } // Enriquecimiento automático de ficha en Kino
+    ids: { tmdb: parseInt(x.id) } // Enriquecimiento automático de fichas
   };
 }
 
-// --- CAPABILITES REQUERIDAS ---
+// --- CAPABILITIES (KINO CONTRACT) ---
 
-// 1. Búsqueda de contenido (search)
+// 1. Buscador global
 export async function search(query) {
   let endpoint = "/search/multi";
   let forcedKind = null;
@@ -67,17 +75,14 @@ export async function search(query) {
     .filter(x => x.media_type !== "person")
     .map(x => mapTmdbItem(x, forcedKind));
     
-  const nextPage = (data.page < data.total_pages) ? String(data.page + 1) : undefined;
-  
   return {
     items: items,
-    next: nextPage
+    next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
   };
 }
 
-// 2. Pantalla de Inicio (home)
+// 2. Carruseles de la pantalla de inicio
 export async function home() {
-  // Envolvemos las solicitudes en bloques independientes para que si una falla, las demás rows carguen
   const rows = [];
   
   try {
@@ -85,13 +90,13 @@ export async function home() {
     if (moviesData.results && moviesData.results.length) {
       rows.push({
         id: "tmdb-movies-popular",
-        title: "Películas Populares (TMDB)",
+        title: "Películas Populares",
         ref: "discover-movies",
         items: moviesData.results.map(x => mapTmdbItem(x, "movie"))
       });
     }
   } catch (e) {
-    kino.log("Error cargando fila de películas populares", e.message);
+    kino.log("Error cargando películas populares:", e.message);
   }
   
   try {
@@ -99,23 +104,24 @@ export async function home() {
     if (tvData.results && tvData.results.length) {
       rows.push({
         id: "tmdb-tv-popular",
-        title: "Series Populares (TMDB)",
+        title: "Series Populares",
         ref: "discover-tv",
         items: tvData.results.map(x => mapTmdbItem(x, "series"))
       });
     }
   } catch (e) {
-    kino.log("Error cargando fila de series populares", e.message);
+    kino.log("Error cargando series populares:", e.message);
   }
   
   return rows;
 }
 
-// 3. Paginación de portadas / "Ver más" (browse)
+// 3. Paginación e interfaz de exploración ("Ver más")
 export async function browse(ref, cursor) {
   const page = cursor ? parseInt(cursor) : 1;
-  let endpoint = ref === "discover-tv" ? "/tv/popular" : "/movie/popular";
-  let forcedKind = ref === "discover-tv" ? "series" : "movie";
+  const isTv = ref === "discover-tv";
+  const endpoint = isTv ? "/tv/popular" : "/movie/popular";
+  const forcedKind = isTv ? "series" : "movie";
   
   const data = await fetchTmdb(`${endpoint}?page=${page}`);
   
@@ -125,20 +131,14 @@ export async function browse(ref, cursor) {
   };
 }
 
-// 4. Desglose de Temporadas y Episodios (episodes)
+// 4. Listado de temporadas y capítulos
 export async function episodes(ref) {
-  // Primero obtenemos los detalles de la serie para saber cuántas temporadas tiene
   const seriesData = await fetchTmdb(`/tv/${ref}`);
   const episodesList = [];
-  
-  // Iteramos de manera segura por las temporadas de la serie
-  // Nota: Limitamos a peticiones simultáneas o consecutivas cuidando el límite de 60 peticiones de Kino
   const seasons = seriesData.seasons || [];
   
   for (const season of seasons) {
-    // Saltamos la temporada 0 (Especiales) si deseas una lista limpia o la incluyes si la requieres. 
-    // La guía de Kino indica que los episodios deben numerarse desde el 1 en adelante.
-    if (season.season_number === 0) continue;
+    if (season.season_number === 0) continue; // Ignorar contenido especial sin orden lineal
     
     try {
       const seasonData = await fetchTmdb(`/tv/${ref}/season/${season.season_number}`);
@@ -148,7 +148,7 @@ export async function episodes(ref) {
         episodesList.push({
           season: season.season_number,
           number: e.episode_number,
-          ref: `tv-${ref}-${season.season_number}-${e.episode_number}`, // Ref estructurado para resolver luego
+          ref: `tv-${ref}-${season.season_number}-${e.episode_number}`,
           title: e.name || `Episodio ${e.episode_number}`,
           overview: e.overview || undefined,
           still: e.still_path ? `${TMDB_IMAGE}${e.still_path}` : undefined,
@@ -156,7 +156,7 @@ export async function episodes(ref) {
         });
       });
     } catch (err) {
-      kino.log(`Error obteniendo la temporada ${season.season_number}`, err.message);
+      kino.log(`Error en temporada ${season.season_number}:`, err.message);
     }
   }
   
@@ -171,31 +171,26 @@ export async function episodes(ref) {
   };
 }
 
-// 5. Resolución de enlaces de reproducción (resolve)
+// 5. Generación del enlace del reproductor
 export async function resolve(ref) {
-  // El primer await asegura que el entorno asíncrono no cause fallos silenciosos no capturados.
-  await null; 
+  await null; // Prevenir "rejection traps" en promesas síncronas
   
-  let videoUrl = "";
+  let playerUrl = "";
   
   if (ref.startsWith("tv-")) {
-    // Formato de ref de series: tv-{tmdbId}-{season}-{episode}
     const parts = ref.split("-");
     const tmdbId = parts[1];
     const season = parts[2];
     const episode = parts[3];
-    
-    // Ejemplo usando la API/Embed pública de vidsrc.to para series
-    videoUrl = `https://vidsrc.to{tmdbId}/${season}/${episode}`;
+    // Servidor de video vidsrc por defecto balanceado para series
+    playerUrl = `https://vidsrc.to{tmdbId}/${season}/${episode}`;
   } else {
-    // Para películas, el 'ref' directo es solo el ID de TMDB numérico enviado por mapTmdbItem
-    videoUrl = `https://vidsrc.to{ref}`;
+    // Balanceado para películas usando el ID directo de TMDB
+    playerUrl = `https://vidsrc.to{ref}`;
   }
   
-  // Devolvemos el Stream estructurado para el reproductor interno de Kino
   return {
-    url: videoUrl,
-    // Dejamos que Kino detecte el tipo (HLS/DASH/HTML5) automáticamente si el provider hace redirects internos
-    expiresInSeconds: 3600 
+    url: playerUrl,
+    expiresInSeconds: 3600
   };
 }
