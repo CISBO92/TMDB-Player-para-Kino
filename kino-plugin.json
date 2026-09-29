@@ -1,7 +1,7 @@
 {
   "id": "tmdb-player-multi",
   "name": "TMDB Player Multi-Server",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "apiVersion": 1,
   "entry": "plugin.js",
   "hosts": [
