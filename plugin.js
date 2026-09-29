@@ -28,7 +28,8 @@ function mapTmdbItem(x, forcedKind) {
   };
 }
 
-function search(query) {
+// FORMATO DE EXPORTACIÓN DIRECTO REQUERIDO POR EL ENTORNO DE DESARROLLO DE KINO
+export async function search(query) {
   var endpoint = query.type === "series" ? "/search/tv" : "/search/movie";
   return fetchTmdb(endpoint + "?query=" + encodeURIComponent(query.q))
     .then(function(data) {
@@ -42,7 +43,7 @@ function search(query) {
     }).catch(function() { return { items: [] }; });
 }
 
-function episodes(ref) {
+export async function episodes(ref) {
   var id = ref.replace("series-", "");
   return fetchTmdb("/tv/" + id)
     .then(function(seriesData) {
@@ -68,24 +69,18 @@ function episodes(ref) {
     });
 }
 
-function resolve(ref) {
-  return Promise.resolve().then(function() {
-    var videoUrl = "";
-    
-    if (ref.indexOf("tv-") === 0) {
-      var parts = ref.split("-");
-      videoUrl = "https://vidsrc.pm" + parts[1] + "/" + parts[2] + "/" + parts[3];
-    } else {
-      var cleanId = ref.replace("movie-", "");
-      videoUrl = "https://vidsrc.pm" + cleanId;
-    }
-    
-    return {
-      url: videoUrl,
-      expiresInSeconds: 3600
-    };
-  });
+export async function resolve(ref) {
+  var videoUrl = "";
+  if (ref.indexOf("tv-") === 0) {
+    var parts = ref.split("-");
+    videoUrl = "https://vidsrc.pm" + parts[1] + "/" + parts[2] + "/" + parts[3];
+  } else {
+    var cleanId = ref.replace("movie-", "");
+    videoUrl = "https://vidsrc.pm" + cleanId;
+  }
+  
+  return {
+    url: videoUrl,
+    expiresInSeconds: 3600
+  };
 }
-
-// SOLUCIÓN DEFINITIVA: Formato oficial de exportación ESM limpio al final del documento
-export { search, episodes, resolve };
