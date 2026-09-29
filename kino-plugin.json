@@ -1,7 +1,7 @@
 {
   "id": "kino-tmdb-player",
   "name": "TMDB Player",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "apiVersion": 1,
   "entry": "plugin.js",
   "description": "Explora el catálogo de TMDB y reproduce películas o series de forma directa.",
@@ -10,7 +10,9 @@
     "api.themoviedb.org",
     "image.tmdb.org",
     "vidsrc.me",
-    "vidsrc.to"
+    "vidsrc.to",
+    "vidsrc.xyz",
+    "embed.su"
   ],
   "capabilities": [
     "search",
@@ -26,7 +28,7 @@
       "label": "TMDB API Key (Opcional)",
       "type": "text",
       "required": false,
-      "hint": "Tu clave de API de themoviedb.org"
+      "hint": "Deja en blanco para usar la clave del sistema"
     }
   ]
 }
