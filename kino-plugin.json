@@ -1,17 +1,20 @@
 {
-  "id": "kino-telegram-hybrid",
-  "name": "Kino Telegram Hybrid",
-  "version": "4.0.0",
+  "id": "kino-telegram-youtg",
+  "name": "Kino Telegram YouTG",
+  "version": "7.0.0",
   "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Catálogo estético de TMDB con almacenamiento masivo y reproducción directa desde servidores en la nube de Telegram.",
+  "description": "Nube privada multimedia automática sincronizada en tiempo real con bases de datos externas de Telegram.",
   "hosts": [
     "api.themoviedb.org",
     "themoviedb.org",
-    "stream.telecdn.xyz"
+    "yaichi-anime.ddns.net",
+    "://githubusercontent.com",
+    "pastebin.com"
   ],
   "capabilities": [
     "search",
+    "episodes",
     "resolve"
   ],
   "color": "#0088CC"
