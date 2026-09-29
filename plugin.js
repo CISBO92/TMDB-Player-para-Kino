@@ -9,7 +9,7 @@ function getApiKey() {
   return (userKey && userKey.trim()) ? userKey.trim() : DEFAULT_API_KEY;
 }
 
-// Llamada HTTP flexible con reintento automático en inglés si la búsqueda regional falla
+// Llamada HTTP con aislamiento de hilos y tolerancia de idioma
 async function fetchTmdb(path, lang = "es-ES") {
   const connector = path.includes("?") ? "&" : "?";
   const url = `${TMDB_API}${path}${connector}api_key=${getApiKey()}&language=${lang}`;
@@ -19,7 +19,6 @@ async function fetchTmdb(path, lang = "es-ES") {
   if (r.status === 401) throw kino.error("auth_required", "La API Key de TMDB es inválida o expiró.");
   if (r.status === 429) throw kino.error("rate_limited", "Demasiadas peticiones a TMDB.");
   
-  // Si no se encuentra con el idioma actual y estábamos buscando en español, reintentamos en inglés
   if (r.status === 404 && lang === "es-ES") {
     return fetchTmdb(path, "en-US");
   }
@@ -53,10 +52,12 @@ function mapTmdbItem(x, forcedKind) {
   };
 }
 
-// --- CAPABILITIES ---
+// --- CAPABILITIES (CONTRATOS DE RED BLINDADOS) ---
 
 export async function search(query) {
-  // Evitamos que cualquier fallo de red o parseo tire abajo el buscador completo
+  // Corta el enlace directo de tipos de Java aislando el hilo en JavaScript inmediatamente
+  await Promise.resolve();
+  
   try {
     let endpoint = "/search/multi";
     let forcedKind = null;
@@ -72,10 +73,7 @@ export async function search(query) {
     const pageParam = query.cursor ? `&page=${query.cursor}` : "";
     const data = await fetchTmdb(`${endpoint}?query=${encodeURIComponent(query.q)}${pageParam}`);
     
-    // Si el servidor responde correctamente pero viene vacío, devolvemos lista vacía con elegancia
-    if (!data || !data.results) {
-      return { items: [] };
-    }
+    if (!data || !data.results) return { items: [] };
 
     const items = data.results
       .filter(x => x && x.media_type !== "person" && x.id !== undefined)
@@ -87,14 +85,43 @@ export async function search(query) {
       next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
     };
   } catch (error) {
-    // En lugar de romper la app con un "unavailable", registramos el error interno en logs 
-    // y le devolvemos a Kino una lista vacía para que no salte el cartel rojo.
     kino.log("Error controlado en buscador:", error.message);
     return { items: [] };
   }
 }
 
+export async function resolve(ref) {
+  // ¡LA SOLUCIÓN AQUÍ!: Forza el aislamiento absoluto de hilos. 
+  // Evita que la app de Java rompa el inicio de la función al inyectar datos decimales flotantes corruptos (17.5)
+  await Promise.resolve();
+  
+  try {
+    const cleanRef = String(ref).trim();
+    let playerUrl = "";
+    
+    if (cleanRef.startsWith("tv-")) {
+      const parts = cleanRef.split("-");
+      // Evitamos desestructuración compleja propensa a errores de asignación de tipos
+      const tmdbId = parts[1];
+      const season = parts[2];
+      const episode = parts[3];
+      playerUrl = "https://vidsrc.to" + tmdbId + "/" + season + "/" + episode;
+    } else {
+      playerUrl = "https://vidsrc.to" + cleanRef;
+    }
+    
+    return {
+      url: playerUrl,
+      expiresInSeconds: 3600
+    };
+  } catch (err) {
+    kino.log("Error crítico en resolve aislado:", err.message);
+    throw kino.error("unavailable", "No se pudo generar el enlace del reproductor.");
+  }
+}
+
 export async function home() {
+  await Promise.resolve();
   const rows = [];
   try {
     const moviesData = await fetchTmdb("/movie/popular");
@@ -127,6 +154,7 @@ export async function home() {
 }
 
 export async function browse(ref, cursor) {
+  await Promise.resolve();
   try {
     const page = cursor ? parseInt(cursor) : 1;
     const isTv = ref === "discover-tv";
@@ -144,6 +172,7 @@ export async function browse(ref, cursor) {
 }
 
 export async function episodes(ref) {
+  await Promise.resolve();
   const seriesData = await fetchTmdb(`/tv/${ref}`);
   const episodesList = [];
   const seasons = seriesData.seasons || [];
@@ -158,15 +187,15 @@ export async function episodes(ref) {
         episodesList.push({
           season: season.season_number,
           number: e.episode_number,
-          ref: `tv-${ref}-${season.season_number}-${e.episode_number}`,
-          title: e.name || `Episodio ${e.episode_number}`,
+          ref: "tv-" + ref + "-" + season.season_number + "-" + e.episode_number,
+          title: e.name || ("Episodio " + e.episode_number),
           overview: e.overview || undefined,
-          still: e.still_path ? `${TMDB_IMAGE}${e.still_path}` : undefined,
+          still: e.still_path ? (TMDB_IMAGE + e.still_path) : undefined,
           airDate: e.air_date || undefined
         });
       });
     } catch (err) {
-      kino.log(`Error en temporada ${season.season_number}:`, err.message);
+      kino.log("Error en temporada " + season.season_number, err.message);
     }
   }
   
@@ -174,26 +203,9 @@ export async function episodes(ref) {
     series: {
       title: seriesData.name,
       overview: seriesData.overview,
-      poster: seriesData.poster_path ? `${TMDB_IMAGE}${seriesData.poster_path}` : undefined,
-      backdrop: seriesData.backdrop_path ? `${TMDB_IMAGE}${seriesData.backdrop_path}` : undefined
+      poster: seriesData.poster_path ? (TMDB_IMAGE + seriesData.poster_path) : undefined,
+      backdrop: seriesData.backdrop_path ? (TMDB_IMAGE + seriesData.backdrop_path) : undefined
     },
     episodes: episodesList
-  };
-}
-
-export async function resolve(ref) {
-  await null; 
-  let playerUrl = "";
-  
-  if (ref.startsWith("tv-")) {
-    const parts = ref.split("-");
-    playerUrl = "https://vidsrc.to" + parts[1] + "/" + parts[2] + "/" + parts[3];
-  } else {
-    playerUrl = "https://vidsrc.to" + ref;
-  }
-  
-  return {
-    url: playerUrl,
-    expiresInSeconds: 3600
   };
 }
