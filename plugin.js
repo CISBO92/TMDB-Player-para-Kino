@@ -15,7 +15,7 @@ const MIS_VIDEOS = {
 
 /**
  * 1. CAPACIDAD DE BÚSQUEDA (search)
- * Tu lógica original intacta que levanta la interfaz visual perfectamente.
+ * Tu lógica original sincronizada con el contrato estricto de IDs de Kino (id_plugin:id_item)
  */
 export async function search(query) {
   await null; 
@@ -24,7 +24,7 @@ export async function search(query) {
 
   if (query.tmdbId) {
     return [{
-      id: `tmdb-${query.tmdbId}`,
+      id: `tmdb:movie-${query.tmdbId}`,
       ref: `movie|${query.tmdbId}`,
       title: query.q || "Película Vinculada",
       kind: "movie",
@@ -42,11 +42,11 @@ export async function search(query) {
       const resultados = data.results || [];
       
       return resultados.map(pelicula => ({
-        id: `tmdb-${pelicula.id}`,
+        id: `tmdb:movie-${pelicula.id}`,
         ref: `movie|${pelicula.id}`,
         title: pelicula.title,
         kind: "movie",
-        year: pelicula.release_date ? pelicula.release_date.split("-")[0] : undefined,
+        year: pelicula.release_date ? pelicula.release_date.split("-") : undefined,
         ids: { tmdb: pelicula.id }
       }));
     }
@@ -59,12 +59,11 @@ export async function search(query) {
 
 /**
  * 2. CAPACIDAD DE RESOLUCIÓN (resolve)
- * ¡REPARADA!: Ahora conecta los IDs reales a los servidores de video en lugar de usar un enlace vacío.
+ * Lógica reparada para conectar los streams reales con soporte para series y películas.
  */
 export async function resolve(ref) {
   await null; 
   
-  // Separamos la referencia nativa enviada por tu buscador
   const parts = ref.split("|");
   const kind = parts[0];
   const tmdbId = parts[1];
@@ -72,17 +71,13 @@ export async function resolve(ref) {
   var urlFinal = "";
   var mimeFinal = "video/mp4";
 
-  // Verificamos si el ID existe en tu lista fija original
   if (MIS_VIDEOS[tmdbId]) {
     urlFinal = MIS_VIDEOS[tmdbId].url;
     mimeFinal = MIS_VIDEOS[tmdbId].mime;
   } else {
-    // ¡LA SOLUCIÓN!: Si es cualquier otra película o serie, generamos el streaming real usando su ID de TMDB
     if (kind === "series" || ref.indexOf("tv") !== -1) {
-      // Formato para capítulos de series estructuradas
       urlFinal = "https://vidsrc.to" + tmdbId + "/1/1"; 
     } else {
-      // Formato para películas directo
       urlFinal = "https://vidsrc.to" + tmdbId;
     }
   }
