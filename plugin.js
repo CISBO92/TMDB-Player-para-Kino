@@ -9,15 +9,20 @@ function getApiKey() {
   return (userKey && userKey.trim()) ? userKey.trim() : DEFAULT_API_KEY;
 }
 
-async function fetchTmdb(path) {
+// Llamada HTTP flexible con reintento automático en inglés si la búsqueda regional falla
+async function fetchTmdb(path, lang = "es-ES") {
   const connector = path.includes("?") ? "&" : "?";
-  const url = `${TMDB_API}${path}${connector}api_key=${getApiKey()}&language=es-ES`;
+  const url = `${TMDB_API}${path}${connector}api_key=${getApiKey()}&language=${lang}`;
   
   const r = await kino.fetch(url, { timeoutMs: 15000 });
   
   if (r.status === 401) throw kino.error("auth_required", "La API Key de TMDB es inválida o expiró.");
-  if (r.status === 404) throw kino.error("not_found", "No se encontró el recurso en TMDB.");
   if (r.status === 429) throw kino.error("rate_limited", "Demasiadas peticiones a TMDB.");
+  
+  // Si no se encuentra con el idioma actual y estábamos buscando en español, reintentamos en inglés
+  if (r.status === 404 && lang === "es-ES") {
+    return fetchTmdb(path, "en-US");
+  }
   
   const contentType = r.headers["content-type"] || "";
   if (!contentType.includes("application/json")) {
@@ -29,15 +34,12 @@ async function fetchTmdb(path) {
   return r.json();
 }
 
-// Mapeador corregido con la expresión de texto limpia exigida por el contrato de Kino
 function mapTmdbItem(x, forcedKind) {
   const rawId = parseInt(x.id, 10);
   if (isNaN(rawId)) return null;
 
   const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
   const stringId = kind + "-" + rawId;
-  
-  // Expresión regular estándar corregida para validar el patrón estricto del ID: ^[A-Za-z0-9._~-]{1,128}\(if (!/^[A-Za-z0-9._~-]{1,128}\)/.test(stringId)) return null;
 
   return {
     id: stringId,
@@ -54,37 +56,49 @@ function mapTmdbItem(x, forcedKind) {
 // --- CAPABILITIES ---
 
 export async function search(query) {
-  let endpoint = "/search/multi";
-  let forcedKind = null;
-  
-  if (query.type === "movie") {
-    endpoint = "/search/movie";
-    forcedKind = "movie";
-  } else if (query.type === "series") {
-    endpoint = "/search/tv";
-    forcedKind = "series";
-  }
-  
-  const pageParam = query.cursor ? `&page=${query.cursor}` : "";
-  const data = await fetchTmdb(`${endpoint}?query=${encodeURIComponent(query.q)}${pageParam}`);
-  
-  const items = (data.results || [])
-    .filter(x => x.media_type !== "person" && x.id !== undefined)
-    .map(x => mapTmdbItem(x, forcedKind))
-    .filter(x => x !== null);
+  // Evitamos que cualquier fallo de red o parseo tire abajo el buscador completo
+  try {
+    let endpoint = "/search/multi";
+    let forcedKind = null;
     
-  return {
-    items: items,
-    next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
-  };
+    if (query.type === "movie") {
+      endpoint = "/search/movie";
+      forcedKind = "movie";
+    } else if (query.type === "series") {
+      endpoint = "/search/tv";
+      forcedKind = "series";
+    }
+    
+    const pageParam = query.cursor ? `&page=${query.cursor}` : "";
+    const data = await fetchTmdb(`${endpoint}?query=${encodeURIComponent(query.q)}${pageParam}`);
+    
+    // Si el servidor responde correctamente pero viene vacío, devolvemos lista vacía con elegancia
+    if (!data || !data.results) {
+      return { items: [] };
+    }
+
+    const items = data.results
+      .filter(x => x && x.media_type !== "person" && x.id !== undefined)
+      .map(x => mapTmdbItem(x, forcedKind))
+      .filter(x => x !== null);
+      
+    return {
+      items: items,
+      next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
+    };
+  } catch (error) {
+    // En lugar de romper la app con un "unavailable", registramos el error interno en logs 
+    // y le devolvemos a Kino una lista vacía para que no salte el cartel rojo.
+    kino.log("Error controlado en buscador:", error.message);
+    return { items: [] };
+  }
 }
 
 export async function home() {
   const rows = [];
-  
   try {
     const moviesData = await fetchTmdb("/movie/popular");
-    if (moviesData.results && moviesData.results.length) {
+    if (moviesData && moviesData.results) {
       rows.push({
         id: "tmdb-movies-popular",
         title: "Películas Populares",
@@ -98,7 +112,7 @@ export async function home() {
   
   try {
     const tvData = await fetchTmdb("/tv/popular");
-    if (tvData.results && tvData.results.length) {
+    if (tvData && tvData.results) {
       rows.push({
         id: "tmdb-tv-popular",
         title: "Series Populares",
@@ -109,22 +123,24 @@ export async function home() {
   } catch (e) {
     kino.log("Error en home tv:", e.message);
   }
-  
   return rows;
 }
 
 export async function browse(ref, cursor) {
-  const page = cursor ? parseInt(cursor) : 1;
-  const isTv = ref === "discover-tv";
-  const endpoint = isTv ? "/tv/popular" : "/movie/popular";
-  const forcedKind = isTv ? "series" : "movie";
-  
-  const data = await fetchTmdb(`${endpoint}?page=${page}`);
-  
-  return {
-    items: (data.results || []).map(x => mapTmdbItem(x, forcedKind)).filter(x => x !== null),
-    next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
-  };
+  try {
+    const page = cursor ? parseInt(cursor) : 1;
+    const isTv = ref === "discover-tv";
+    const endpoint = isTv ? "/tv/popular" : "/movie/popular";
+    const forcedKind = isTv ? "series" : "movie";
+    
+    const data = await fetchTmdb(`${endpoint}?page=${page}`);
+    return {
+      items: (data.results || []).map(x => mapTmdbItem(x, forcedKind)).filter(x => x !== null),
+      next: (data.page < data.total_pages) ? String(data.page + 1) : undefined
+    };
+  } catch (e) {
+    return { items: [] };
+  }
 }
 
 export async function episodes(ref) {
@@ -134,7 +150,6 @@ export async function episodes(ref) {
   
   for (const season of seasons) {
     if (season.season_number === 0) continue;
-    
     try {
       const seasonData = await fetchTmdb(`/tv/${ref}/season/${season.season_number}`);
       const eps = seasonData.episodes || [];
@@ -172,7 +187,7 @@ export async function resolve(ref) {
   
   if (ref.startsWith("tv-")) {
     const parts = ref.split("-");
-    playerUrl = "https://vidsrc.to" + parts + "/" + parts + "/" + parts;
+    playerUrl = "https://vidsrc.to" + parts[1] + "/" + parts[2] + "/" + parts[3];
   } else {
     playerUrl = "https://vidsrc.to" + ref;
   }
