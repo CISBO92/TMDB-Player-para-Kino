@@ -16,9 +16,9 @@ function mapTmdbItem(x, forcedKind) {
   var rawId = parseInt(x.id, 10);
   var kind = forcedKind || ((x.media_type === "tv" || x.first_air_date) ? "series" : "movie");
   
-  // Usamos estrictamente el prefijo 'xuper:' para activar la interfaz de la pestaña
+  // Usamos el ID de nuestro plugin oficial, cumpliendo con la regla de IDs únicos de Kino
   return {
-    id: "xuper:" + kind + "-" + rawId,
+    id: "tmdb-player-multi:" + kind + "-" + rawId,
     ref: kind + "-" + rawId,
     title: String(x.title || x.name || "Sin título"),
     kind: kind,
@@ -58,7 +58,7 @@ export function episodes(ref) {
             season: sNum,
             number: e,
             ref: "tv-" + id + "-" + sNum + "-" + e,
-            title: "Episodio " + e + " (Espejo de respaldo)"
+            title: "Episodio " + e + " (Servidor TMDB)"
           });
         }
       }
@@ -75,12 +75,12 @@ export function resolve(ref) {
     
     if (ref.indexOf("tv-") === 0) {
       var parts = ref.split("-");
-      // Servidor espejo directo que extrae el video en crudo (.mp4 o hls) para series
-      videoUrl = "https://vidsrc.stream" + parts[1] + "?season=" + parts[2] + "&episode=" + parts[3];
+      // Servidor directo vidsrc.pm optimizado para decodificadores móviles en series
+      videoUrl = "https://vidsrc.pm" + parts[1] + "/" + parts[2] + "/" + parts[3];
     } else {
       var cleanId = ref.replace("movie-", "");
-      // Servidor espejo directo que extrae el video en crudo (.mp4 o hls) para películas
-      videoUrl = "https://vidsrc.stream" + cleanId;
+      // Servidor directo vidsrc.pm optimizado para decodificadores móviles en películas
+      videoUrl = "https://vidsrc.pm" + cleanId;
     }
     
     return {
