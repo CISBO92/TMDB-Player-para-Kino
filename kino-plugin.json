@@ -1,21 +1,32 @@
 {
-  "id": "kino-telegram-youtg",
-  "name": "Kino Telegram YouTG",
-  "version": "7.0.0",
-  "apiVersion": 2,
+  "id": "kino-tmdb-player",
+  "name": "TMDB Player",
+  "version": "1.0.0",
+  "apiVersion": 1,
   "entry": "plugin.js",
-  "description": "Nube privada multimedia automática sincronizada en tiempo real con bases de datos externas de Telegram.",
+  "description": "Explora el catálogo de TMDB y reproduce películas o series de forma directa.",
+  "author": "Desarrollador",
   "hosts": [
     "api.themoviedb.org",
-    "themoviedb.org",
-    "yaichi-anime.ddns.net",
-    "://githubusercontent.com",
-    "pastebin.com"
+    "image.tmdb.org",
+    "vidsrc.me",
+    "vidsrc.to"
   ],
   "capabilities": [
     "search",
+    "home",
+    "browse",
     "episodes",
     "resolve"
   ],
-  "color": "#0088CC"
+  "color": "#032541",
+  "settings": [
+    {
+      "key": "api_key",
+      "label": "TMDB API Key (Opcional)",
+      "type": "text",
+      "required": false,
+      "hint": "Tu clave de API de themoviedb.org"
+    }
+  ]
 }
