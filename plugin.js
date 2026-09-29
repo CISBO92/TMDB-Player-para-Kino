@@ -16,7 +16,6 @@ function mapTmdbItem(x, forcedKind) {
   var rawId = parseInt(x.id, 10);
   var kind = forcedKind || ((x.media_type === "tv" || x.first_air_date) ? "series" : "movie");
   
-  // Usamos el ID de nuestro plugin oficial, cumpliendo con la regla de IDs únicos de Kino
   return {
     id: "tmdb-player-multi:" + kind + "-" + rawId,
     ref: kind + "-" + rawId,
@@ -29,7 +28,7 @@ function mapTmdbItem(x, forcedKind) {
   };
 }
 
-export function search(query) {
+function search(query) {
   var endpoint = query.type === "series" ? "/search/tv" : "/search/movie";
   return fetchTmdb(endpoint + "?query=" + encodeURIComponent(query.q))
     .then(function(data) {
@@ -43,7 +42,7 @@ export function search(query) {
     }).catch(function() { return { items: [] }; });
 }
 
-export function episodes(ref) {
+function episodes(ref) {
   var id = ref.replace("series-", "");
   return fetchTmdb("/tv/" + id)
     .then(function(seriesData) {
@@ -69,17 +68,15 @@ export function episodes(ref) {
     });
 }
 
-export function resolve(ref) {
+function resolve(ref) {
   return Promise.resolve().then(function() {
     var videoUrl = "";
     
     if (ref.indexOf("tv-") === 0) {
       var parts = ref.split("-");
-      // Servidor directo vidsrc.pm optimizado para decodificadores móviles en series
       videoUrl = "https://vidsrc.pm" + parts[1] + "/" + parts[2] + "/" + parts[3];
     } else {
       var cleanId = ref.replace("movie-", "");
-      // Servidor directo vidsrc.pm optimizado para decodificadores móviles en películas
       videoUrl = "https://vidsrc.pm" + cleanId;
     }
     
@@ -89,3 +86,10 @@ export function resolve(ref) {
     };
   });
 }
+
+// SOLUCIÓN AL RECONOCIMIENTO: Exportación limpia requerida por el cargador nativo de la app
+module.exports = {
+  search: search,
+  episodes: episodes,
+  resolve: resolve
+};
