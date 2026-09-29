@@ -2,60 +2,90 @@
 
 var TMDB_API = "https://themoviedb.org";
 var TMDB_IMAGE = "https://tmdb.org";
-var API_KEY = "e21fc412c324d60a57c7164fd063fcde"; 
+var API_KEY = "e21fc412c324d60a57c7164fd063fcde";
 
-// Mapeador nativo plano sin ES6
-function mapTmdbItem(x) {
+function fetchTmdb(path) {
+  var connector = path.indexOf("?") !== -1 ? "&" : "?";
+  var url = TMDB_API + path + connector + "api_key=" + API_KEY + "&language=es-ES";
+  return kino.fetch(url, { timeoutMs: 10000 })
+    .then(function(r) { return r.json(); });
+}
+
+function mapTmdbItem(x, forcedKind) {
   if (!x || !x.id) return null;
   var rawId = parseInt(x.id, 10);
-  if (isNaN(rawId)) return null;
-
+  var kind = forcedKind || ((x.media_type === "tv" || x.first_air_date) ? "series" : "movie");
   return {
-    id: "tmdb-player:movie-" + rawId,
-    ref: String(rawId),
+    id: "tmdb-player-multi:" + kind + "-" + rawId,
+    ref: kind + "-" + rawId,
     title: String(x.title || x.name || "Sin título"),
-    kind: "movie",
-    year: x.release_date ? String(x.release_date).substring(0, 4) : undefined,
+    kind: kind,
+    year: x.release_date || x.first_air_date ? String(x.release_date || x.first_air_date).substring(0, 4) : undefined,
     poster: x.poster_path ? (TMDB_IMAGE + x.poster_path) : undefined,
     backdrop: x.backdrop_path ? (TMDB_IMAGE + x.backdrop_path) : undefined,
     overview: x.overview ? String(x.overview) : undefined
   };
 }
 
-// --- CAPABILITIES CON PROMESAS PURAS (SIN ASYNC/AWAIT) ---
-
 export function search(query) {
-  var url = TMDB_API + "/search/movie?query=" + encodeURIComponent(query.q) + "&api_key=" + API_KEY + "&language=es-ES";
-  
-  // Usamos el retorno de promesa en bruto directo para evitar que el puente de Java sufra retardos
-  return kino.fetch(url, { timeoutMs: 8000 })
-    .then(function(r) {
-      if (!r.ok) return { items: [] };
-      return r.json();
-    })
+  var endpoint = query.type === "series" ? "/search/tv" : "/search/movie";
+  return fetchTmdb(endpoint + "?query=" + encodeURIComponent(query.q))
     .then(function(data) {
       if (!data || !data.results) return { items: [] };
-      
-      var mappedItems = [];
+      var mapped = [];
       for (var i = 0; i < data.results.length; i++) {
-        var item = mapTmdbItem(data.results[i]);
-        if (item !== null) {
-          mappedItems.push(item);
+        var item = mapTmdbItem(data.results[i], query.type);
+        if (item) mapped.push(item);
+      }
+      return { items: mapped };
+    }).catch(function() { return { items: [] }; });
+}
+
+export function episodes(ref) {
+  var id = ref.replace("series-", "");
+  return fetchTmdb("/tv/" + id)
+    .then(function(seriesData) {
+      var episodesList = [];
+      var seasons = seriesData.seasons || [];
+      
+      // Mapeamos los episodios estructurando la referencia para series de forma limpia
+      for (var s = 0; s < seasons.length; s++) {
+        if (seasons[s].season_number === 0) continue;
+        var sNum = seasons[s].season_number;
+        for (var e = 1; e <= (seasons[s].episode_count || 0); e++) {
+          episodesList.push({
+            season: sNum,
+            number: e,
+            ref: "tv-" + id + "-" + sNum + "-" + e,
+            title: "Episodio " + e + " (Espejo de respaldo)"
+          });
         }
       }
-      return { items: mappedItems };
-    })
-    .catch(function() {
-      return { items: [] };
+      return {
+        series: { title: seriesData.name, overview: seriesData.overview },
+        episodes: episodesList
+      };
     });
 }
 
 export function resolve(ref) {
-  // Retorno inmediato síncrono envuelto en promesa limpia para no congelar el motor QuickJS
   return Promise.resolve().then(function() {
-    var cleanId = String(ref).replace("movie-", "").trim();
+    var videoUrl = "";
+    
+    // Verificamos si la petición proviene de un episodio de serie o de una película directa
+    if (ref.indexOf("tv-") === 0) {
+      var parts = ref.split("-");
+      // Formato de extracción de stream directo libre de Iframes HTML para series
+      videoUrl = "https://vidsrc.stream" + parts[1] + "?season=" + parts[2] + "&episode=" + parts[3];
+    } else {
+      var cleanId = ref.replace("movie-", "");
+      // Formato de extracción de stream directo libre de Iframes HTML para películas
+      videoUrl = "https://vidsrc.stream" + cleanId;
+    }
+    
+    // Entregamos el flujo de red puro que el reproductor nativo de Kino sí puede abrir
     return {
-      url: "https://vidsrc.to" + cleanId,
+      url: videoUrl,
       expiresInSeconds: 3600
     };
   });
