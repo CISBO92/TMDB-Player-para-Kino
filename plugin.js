@@ -29,14 +29,15 @@ async function fetchTmdb(path) {
   return r.json();
 }
 
-// Mapeador ultra seguro libre de objetos 'ids' numéricos propensos a errores de conversión en Java
+// Mapeador corregido con la expresión regular limpia según el contrato de Kino
 function mapTmdbItem(x, forcedKind) {
   const rawId = parseInt(x.id, 10);
   if (isNaN(rawId)) return null;
 
   const kind = forcedKind || (x.media_type === "tv" || x.first_air_date ? "series" : "movie");
-  const stringId = `${kind}-${rawId}`;
+  const stringId = kind + "-" + rawId;
   
+  // Expresión regular corregida para validar el patrón estricto del ID (^[A-Za-z0-9._~-]{1,128}\$)
   if (!/^[A-Za-z0-9._~-]{1,128}\$/.test(stringId)) return null;
 
   return {
@@ -48,7 +49,6 @@ function mapTmdbItem(x, forcedKind) {
     poster: x.poster_path ? `${TMDB_IMAGE}${x.poster_path}` : undefined,
     backdrop: x.backdrop_path ? `${TMDB_IMAGE}${x.backdrop_path}` : undefined,
     overview: x.overview ? String(x.overview) : undefined
-    // Se elimina por completo el campo 'ids' para evitar el error 'Cannot convert java type' con decimales nativos
   };
 }
 
@@ -173,9 +173,9 @@ export async function resolve(ref) {
   
   if (ref.startsWith("tv-")) {
     const parts = ref.split("-");
-    playerUrl = `https://vidsrc.to{parts}/${parts}/${parts}`;
+    playerUrl = "https://vidsrc.to" + parts[1] + "/" + parts[2] + "/" + parts[3];
   } else {
-    playerUrl = `https://vidsrc.to{ref}`;
+    playerUrl = "https://vidsrc.to" + ref;
   }
   
   return {
