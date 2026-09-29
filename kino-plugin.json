@@ -1,17 +1,18 @@
 {
-  "id": "kino-x-stream-player",
-  "name": "Kino X-Stream Player",
-  "version": "3.0.0",
-  "apiVersion": 3,
+  "id": "kino-telegram-hybrid",
+  "name": "Kino Telegram Hybrid",
+  "version": "4.0.0",
+  "apiVersion": 2,
   "entry": "plugin.js",
-  "description": "Plugin de aprendizaje para conectar Kino con flujos de transmisión IPTV y Xtream libres de publicidad.",
+  "description": "Catálogo estético de TMDB con almacenamiento masivo y reproducción directa desde servidores en la nube de Telegram.",
   "hosts": [
     "api.themoviedb.org",
-    "themoviedb.org"
+    "themoviedb.org",
+    "stream.telecdn.xyz"
   ],
   "capabilities": [
     "search",
     "resolve"
   ],
-  "color": "#FF9900"
+  "color": "#0088CC"
 }
