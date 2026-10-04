@@ -21,7 +21,6 @@ export function search(query) {
   
   var tipoContenido = query.kind === "series" ? "series" : "movie";
 
-  // El prefijo amarra perfectamente el ID del plugin sin puntos
   return {
     items: [{
       id: "tmdb-player-para-kino:" + tipoContenido + "-" + idPlano,
@@ -50,7 +49,6 @@ export function resolve(ref, episodeId = null) {
     var seasonNumber = 1;
     var episodeNumber = 1;
 
-    // Control dinámico de capítulos de Kino TV
     if (episodeId) {
       if (typeof episodeId === "object") {
         seasonNumber = episodeId.season !== undefined ? episodeId.season : 1;
