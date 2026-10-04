@@ -2,11 +2,10 @@
 
 /**
  * TMDB Player Multi-Server para Kino TV
- * Arquitectura Síncrona Dinámica Multi-Mirror (Código Limpio)
+ * Arquitectura Síncrona Dinámica Multi-Mirror - API v6 Compatible
  * Desarrollado por CISBO92 (2026)
  */
 
-// 1. CAPACIDAD DE BÚSQUEDA SÍNCRONA DIRECTA
 export function search(query) {
   if (!query || (!query.q && !query.tmdbId)) {
     return { items: [] };
@@ -22,9 +21,10 @@ export function search(query) {
   
   var tipoContenido = query.kind === "series" ? "series" : "movie";
 
+  // El prefijo amarra perfectamente el ID del plugin sin puntos
   return {
     items: [{
-      id: "com.cisbo92.tmdb-player-para-kino:" + tipoContenido + "-" + idPlano,
+      id: "tmdb-player-para-kino:" + tipoContenido + "-" + idPlano,
       ref: tipoContenido + "-" + idPlano,
       title: textoTitulo,
       kind: tipoContenido,
@@ -34,7 +34,6 @@ export function search(query) {
   };
 }
 
-// 2. CONTRATO DE RESOLUCIÓN MULTI-SERVIDOR AUTOMATIZADO
 export function resolve(ref, episodeId = null) {
   if (!ref) {
     return { url: "" };
@@ -51,7 +50,7 @@ export function resolve(ref, episodeId = null) {
     var seasonNumber = 1;
     var episodeNumber = 1;
 
-    // Mapeo dinámico del episodio seleccionado en Kino TV
+    // Control dinámico de capítulos de Kino TV
     if (episodeId) {
       if (typeof episodeId === "object") {
         seasonNumber = episodeId.season !== undefined ? episodeId.season : 1;
@@ -59,21 +58,19 @@ export function resolve(ref, episodeId = null) {
       } else if (typeof episodeId === "string" && episodeId.toLowerCase().includes("e")) {
         var partes = String(episodeId).toLowerCase().split("e");
         if (partes.length === 2) {
-          seasonNumber = parseInt(partes[0].replace("s", ""), 10) || 1;
-          episodeNumber = parseInt(partes[1], 10) || 1;
+          seasonNumber = parseInt(partes.replace("s", ""), 10) || 1;
+          episodeNumber = parseInt(partes, 10) || 1;
         }
       } else {
         episodeNumber = parseInt(episodeId, 10) || 1;
       }
     }
     
-    // URLs limpias para series
     urlVidSrc  = "https://vidsrc.to" + idLimpio + "/" + seasonNumber + "/" + episodeNumber;
     urlVidLink = "https://vidlink.pro" + idLimpio + "/" + seasonNumber + "/" + episodeNumber;
     url2Embed  = "https://2embed.cc" + idLimpio + "&s=" + seasonNumber + "&e=" + episodeNumber;
     
   } else {
-    // URLs limpias para películas
     urlVidSrc  = "https://vidsrc.to" + idLimpio;
     urlVidLink = "https://vidlink.pro" + idLimpio;
     url2Embed  = "https://2embed.cc" + idLimpio;
