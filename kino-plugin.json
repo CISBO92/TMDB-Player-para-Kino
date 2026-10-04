@@ -1,14 +1,18 @@
 {
-  "id": "tmdb-player-multi",
+  "id": "com.cisbo92.tmdb-player-para-kino",
   "name": "TMDB Player Multi-Server",
-  "version": "9.0.0",
-  "apiVersion": 1,
-  "entry": "plugin.js",
-  "hosts": [
-    "vidsrc.to"
-  ],
-  "capabilities": [
-    "search",
-    "resolve"
-  ]
+  "version": "1.4.0",
+  "description": "Enlaza directamente el catálogo de Kino con los servidores espejo de VidSrc, VidLink y 2Embed en alta definición con mapeo automático de episodios.",
+  "icon": "https://tmdb.org",
+  "permissions": {
+    "networks": [
+      "vidsrc.to",
+      "*.vidsrc.to",
+      "vidlink.pro",
+      "*.vidlink.pro",
+      "2embed.cc",
+      "*.2embed.cc"
+    ]
+  },
+  "settings": []
 }
