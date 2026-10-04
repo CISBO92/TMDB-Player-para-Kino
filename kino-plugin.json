@@ -1,7 +1,9 @@
 {
-  "id": "com.cisbo92.tmdb-player-para-kino",
+  "id": "tmdb-player-para-kino",
   "name": "TMDB Player Multi-Server",
   "version": "1.4.0",
+  "apiVersion": 6,
+  "entry": "plugin.js",
   "description": "Enlaza directamente el catálogo de Kino con los servidores espejo de VidSrc, VidLink y 2Embed en alta definición con mapeo automático de episodios.",
   "icon": "https://tmdb.org",
   "permissions": {
