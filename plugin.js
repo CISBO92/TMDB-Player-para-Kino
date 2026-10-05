@@ -2,7 +2,7 @@
 
 /**
  * TMDB Player Multi-Server para Kino TV
- * Arquitectura Síncrona Dinámica Multi-Mirror - API v6 Compatible
+ * Arquitectura Dinámica Multi-Mirror - API v6 Compatible
  * Desarrollado por CISBO92 y Colaborador AI (2026)
  */
 
@@ -11,26 +11,68 @@ export function search(query) {
     return { items: [] };
   }
 
-  var idPlano = query.tmdbId ? parseInt(query.tmdbId, 10) : 110; 
-  if (isNaN(idPlano)) {
-    idPlano = 110;
+  // Si Kino ya nos provee el ID de TMDB directamente, saltamos la búsqueda y resolvemos el item inmediato
+  if (query.tmdbId) {
+    var idPlano = parseInt(query.tmdbId, 10);
+    var textoTitulo = query.q ? String(query.q) : "Contenido Vinculado";
+    var anoLimpio = query.year ? String(query.year) : "2026";
+    var tipoContenido = query.kind === "series" ? "series" : "movie";
+
+    return {
+      items: [{
+        id: "tmdb-player-para-kino:" + tipoContenido + "-" + idPlano,
+        ref: tipoContenido + "-" + idPlano,
+        title: textoTitulo,
+        kind: tipoContenido,
+        year: anoLimpio,
+        ids: { tmdb: idPlano }
+      }]
+    };
   }
 
-  var textoTitulo = query.q ? String(query.q) : "Contenido Vinculado";
-  var anoLimpio = query.year ? String(query.year) : "2026";
-  
-  var tipoContenido = query.kind === "series" ? "series" : "movie";
+  // Si es una búsqueda por texto del usuario, consultamos el catálogo espejo de 2Embed
+  var keyword = encodeURIComponent(query.q);
+  var esSeries = query.kind === "series";
+  var endpoint = esSeries 
+    ? "https://2embed.cc" + keyword
+    : "https://2embed.cc" + keyword;
 
-  return {
-    items: [{
-      id: "tmdb-player-para-kino:" + tipoContenido + "-" + idPlano,
-      ref: tipoContenido + "-" + idPlano,
-      title: textoTitulo,
-      kind: tipoContenido,
-      year: anoLimpio,
-      ids: { tmdb: idPlano }
-    }]
-  };
+  try {
+    // Realizamos la petición al servidor puente de metadatos
+    var respuesta = fetch(endpoint);
+    if (!respuesta || respuesta.status !== 200) {
+      return { items: [] };
+    }
+
+    var datos = JSON.parse(respuesta.body);
+    if (!datos || !datos.results || datos.results.length === 0) {
+      return { items: [] };
+    }
+
+    // Mapeamos los resultados del servidor al formato estándar de Kino
+    var itemsFormateados = datos.results.map(function(item) {
+      var idTMDB = item.id;
+      var titulo = item.title || item.name || "Título Desconocido";
+      var fecha = item.release_date || item.first_air_date || "";
+      var ano = fecha ? fecha.split("-")[0] : "----";
+      var tipo = esSeries ? "series" : "movie";
+
+      return {
+        id: "tmdb-player-para-kino:" + tipo + "-" + idTMDB,
+        ref: tipo + "-" + idTMDB,
+        title: titulo,
+        kind: tipo,
+        year: ano,
+        ids: { tmdb: idTMDB }
+      };
+    });
+
+    return { items: itemsFormateados };
+
+  } catch (error) {
+    // Selector de contingencia en caso de fallo de red en la API espejo
+    return { items: [] };
+  }
 }
 
 export function resolve(ref, episodeId = null) {
@@ -55,11 +97,10 @@ export function resolve(ref, episodeId = null) {
         episodeNumber = episodeId.number !== undefined ? parseInt(episodeId.number, 10) : 1;
       } else if (typeof episodeId === "string" && episodeId.toLowerCase().includes("e")) {
         var strId = episodeId.toLowerCase();
-        // Extrae patrones de texto estructurados tipo s1e5 o S01E02
         var matchSeason = strId.match(/s(\d+)/);
         var matchEpisode = strId.match(/e(\d+)/);
-        if (matchSeason && matchSeason[1]) seasonNumber = parseInt(matchSeason[1], 10);
-        if (matchEpisode && matchEpisode[1]) episodeNumber = parseInt(matchEpisode[1], 10);
+        if (matchSeason) seasonNumber = parseInt(matchSeason[1], 10);
+        if (matchEpisode) episodeNumber = parseInt(matchEpisode, 10);
       } else {
         episodeNumber = parseInt(episodeId, 10) || 1;
       }
