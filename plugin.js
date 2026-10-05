@@ -2,7 +2,7 @@
 
 /**
  * TMDB Player Multi-Server para Kino TV
- * Arquitectura Dinámica Multi-Mirror - API v6 Compatible
+ * Arquitectura Síncrona Oficial - API v6 Compatible
  * Desarrollado por CISBO92 y Colaborador AI (2026)
  */
 
@@ -11,7 +11,7 @@ export function search(query) {
     return { items: [] };
   }
 
-  // Si Kino ya nos provee el ID de TMDB directamente, saltamos la búsqueda y resolvemos el item inmediato
+  // Si Kino nos envía el ID directamente (flujo de reproducción inmediata)
   if (query.tmdbId) {
     var idPlano = parseInt(query.tmdbId, 10);
     var textoTitulo = query.q ? String(query.q) : "Contenido Vinculado";
@@ -30,7 +30,7 @@ export function search(query) {
     };
   }
 
-  // Si es una búsqueda por texto del usuario, consultamos el catálogo espejo de 2Embed
+  // Búsqueda por texto usando el motor HTTP propio de Kino (kino.fetch)
   var keyword = encodeURIComponent(query.q);
   var esSeries = query.kind === "series";
   var endpoint = esSeries 
@@ -38,9 +38,10 @@ export function search(query) {
     : "https://2embed.cc" + keyword;
 
   try {
-    // Realizamos la petición al servidor puente de metadatos
-    var respuesta = fetch(endpoint);
-    if (!respuesta || respuesta.status !== 200) {
+    // LLAMADA REQUERIDA: Uso estricto de kino.fetch provisto por la app
+    var respuesta = kino.fetch(endpoint);
+    
+    if (!respuesta || respuesta.status !== 200 || !respuesta.body) {
       return { items: [] };
     }
 
@@ -49,12 +50,12 @@ export function search(query) {
       return { items: [] };
     }
 
-    // Mapeamos los resultados del servidor al formato estándar de Kino
     var itemsFormateados = datos.results.map(function(item) {
       var idTMDB = item.id;
       var titulo = item.title || item.name || "Título Desconocido";
       var fecha = item.release_date || item.first_air_date || "";
-      var ano = fecha ? fecha.split("-")[0] : "----";
+      var arrAno = fecha ? fecha.split("-") : ["2026"];
+      var anoLimpio = arrAno[0]; 
       var tipo = esSeries ? "series" : "movie";
 
       return {
@@ -62,7 +63,7 @@ export function search(query) {
         ref: tipo + "-" + idTMDB,
         title: titulo,
         kind: tipo,
-        year: ano,
+        year: anoLimpio,
         ids: { tmdb: idTMDB }
       };
     });
@@ -70,7 +71,6 @@ export function search(query) {
     return { items: itemsFormateados };
 
   } catch (error) {
-    // Selector de contingencia en caso de fallo de red en la API espejo
     return { items: [] };
   }
 }
