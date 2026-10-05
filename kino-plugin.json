@@ -5,7 +5,7 @@
   "apiVersion": 6,
   "entry": "plugin.js",
   "description": "Enlaza directamente el catálogo de Kino con los servidores espejo de VidSrc, VidLink y 2Embed en alta definición con mapeo automático de episodios.",
-  "icon": "https://tmdb.org",
+  "icon": "icon.png",
   "capabilities": [
     "search",
     "resolve"
@@ -22,7 +22,8 @@
       "vidlink.pro",
       "*.vidlink.pro",
       "2embed.cc",
-      "*.2embed.cc"
+      "*.2embed.cc",
+      "api.2embed.cc"
     ]
   },
   "settings": []
