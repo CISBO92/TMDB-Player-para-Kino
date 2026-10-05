@@ -15,16 +15,14 @@
     "vidlink.pro",
     "2embed.cc"
   ],
-  "permissions": {
-    "networks": [
-      "vidsrc.to",
-      "*.vidsrc.to",
-      "vidlink.pro",
-      "*.vidlink.pro",
-      "2embed.cc",
-      "*.2embed.cc",
-      "api.2embed.cc"
-    ]
-  },
+  "permissions": [
+    "vidsrc.to",
+    "*.vidsrc.to",
+    "vidlink.pro",
+    "*.vidlink.pro",
+    "2embed.cc",
+    "*.2embed.cc",
+    "api.2embed.cc"
+  ],
   "settings": []
 }
