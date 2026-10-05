@@ -3,7 +3,7 @@
 /**
  * TMDB Player Multi-Server para Kino TV
  * Arquitectura Síncrona Dinámica Multi-Mirror - API v6 Compatible
- * Desarrollado por CISBO92 (2026)
+ * Desarrollado por CISBO92 y Colaborador AI (2026)
  */
 
 export function search(query) {
@@ -51,26 +51,27 @@ export function resolve(ref, episodeId = null) {
 
     if (episodeId) {
       if (typeof episodeId === "object") {
-        seasonNumber = episodeId.season !== undefined ? episodeId.season : 1;
-        episodeNumber = episodeId.number !== undefined ? episodeId.number : 1;
+        seasonNumber = episodeId.season !== undefined ? parseInt(episodeId.season, 10) : 1;
+        episodeNumber = episodeId.number !== undefined ? parseInt(episodeId.number, 10) : 1;
       } else if (typeof episodeId === "string" && episodeId.toLowerCase().includes("e")) {
-        var partes = String(episodeId).toLowerCase().split("e");
-        if (partes.length === 2) {
-          seasonNumber = parseInt(partes.replace("s", ""), 10) || 1;
-          episodeNumber = parseInt(partes, 10) || 1;
-        }
+        var strId = episodeId.toLowerCase();
+        // Extrae patrones de texto estructurados tipo s1e5 o S01E02
+        var matchSeason = strId.match(/s(\d+)/);
+        var matchEpisode = strId.match(/e(\d+)/);
+        if (matchSeason && matchSeason[1]) seasonNumber = parseInt(matchSeason[1], 10);
+        if (matchEpisode && matchEpisode[1]) episodeNumber = parseInt(matchEpisode[1], 10);
       } else {
         episodeNumber = parseInt(episodeId, 10) || 1;
       }
     }
     
-    urlVidSrc  = "https://vidsrc.to" + idLimpio + "/" + seasonNumber + "/" + episodeNumber;
     urlVidLink = "https://vidlink.pro" + idLimpio + "/" + seasonNumber + "/" + episodeNumber;
+    urlVidSrc  = "https://vidsrc.to" + idLimpio + "/" + seasonNumber + "/" + episodeNumber;
     url2Embed  = "https://2embed.cc" + idLimpio + "&s=" + seasonNumber + "&e=" + episodeNumber;
     
   } else {
-    urlVidSrc  = "https://vidsrc.to" + idLimpio;
     urlVidLink = "https://vidlink.pro" + idLimpio;
+    urlVidSrc  = "https://vidsrc.to" + idLimpio;
     url2Embed  = "https://2embed.cc" + idLimpio;
   }
 
