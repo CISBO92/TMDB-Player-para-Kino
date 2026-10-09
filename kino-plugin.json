@@ -1,50 +1,21 @@
 {
-  "id": "community.addonlatam",
-  "version": "1.5.8",
-  "name": "Addon Latam",
-  "description": "Streams en español latino para películas y series",
-  "logo": "https://archive.org/download/liddoy_20260714/ppped1d0s/logo.png",
-  "resources": [
-    "stream",
-    "catalog",
-    "meta"
+  "id": "tmdb-player-para-kino",
+  "name": "TMDB Player Multi-Server",
+  "version": "1.4.7",
+  "apiVersion": 6,
+  "entry": "plugin.js",
+  "description": "Enlaza directamente el catálogo de Kino con los servidores espejo de VidSrc, VidLink y 2Embed en alta definición con mapeo automático de episodios.",
+  "icon": "icon.png",
+  "capabilities": [
+    "search",
+    "resolve"
   ],
-  "types": [
-    "movie",
-    "series"
+  "hosts": [
+    "vidsrc.to",
+    "vidlink.pro",
+    "2embed.cc",
+    "api.2embed.cc"
   ],
-  "catalogs": [
-    {
-      "type": "movie",
-      "id": "addonlatam-search-movie",
-      "name": "Addon Latam",
-      "extra": [
-        {
-          "name": "search",
-          "isRequired": true
-        }
-      ]
-    },
-    {
-      "type": "series",
-      "id": "addonlatam-search-series",
-      "name": "Addon Latam",
-      "extra": [
-        {
-          "name": "search",
-          "isRequired": true
-        }
-      ]
-    },
-    {
-      "type": "movie",
-      "id": "addonlatam-new-releases-movie",
-      "name": "Nuevos Estrenos"
-    },
-    {
-      "type": "series",
-      "id": "addonlatam-new-releases-series",
-      "name": "Nuevos Estrenos"
-    }
-  ]
+  "permissions": [],
+  "settings": []
 }
