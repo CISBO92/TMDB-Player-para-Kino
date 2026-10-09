@@ -1,1 +1,50 @@
-{"id":"community.addonlatam","version":"1.5.8","name":"Addon Latam","description":"Streams en español latino para películas y series","logo":"https://archive.org/download/liddoy_20260714/ppped1d0s/logo.png","resources":["stream","catalog","meta"],"types":["movie","series"],"catalogs":[{"type":"movie","id":"addonlatam-search-movie","name":"Addon Latam","extra":[{"name":"search","isRequired":true}]},{"type":"series","id":"addonlatam-search-series","name":"Addon Latam","extra":[{"name":"search","isRequired":true}]},{"type":"movie","id":"addonlatam-new-releases-movie","name":"Nuevos Estrenos"},{"type":"series","id":"addonlatam-new-releases-series","name":"Nuevos Estrenos"}]}
+{
+  "id": "community.addonlatam",
+  "version": "1.5.8",
+  "name": "Addon Latam",
+  "description": "Streams en español latino para películas y series",
+  "logo": "https://archive.org/download/liddoy_20260714/ppped1d0s/logo.png",
+  "resources": [
+    "stream",
+    "catalog",
+    "meta"
+  ],
+  "types": [
+    "movie",
+    "series"
+  ],
+  "catalogs": [
+    {
+      "type": "movie",
+      "id": "addonlatam-search-movie",
+      "name": "Addon Latam",
+      "extra": [
+        {
+          "name": "search",
+          "isRequired": true
+        }
+      ]
+    },
+    {
+      "type": "series",
+      "id": "addonlatam-search-series",
+      "name": "Addon Latam",
+      "extra": [
+        {
+          "name": "search",
+          "isRequired": true
+        }
+      ]
+    },
+    {
+      "type": "movie",
+      "id": "addonlatam-new-releases-movie",
+      "name": "Nuevos Estrenos"
+    },
+    {
+      "type": "series",
+      "id": "addonlatam-new-releases-series",
+      "name": "Nuevos Estrenos"
+    }
+  ]
+}
