@@ -8,4 +8,4 @@ Este es un plugin de código abierto para la aplicación **Kino**, adaptado a pa
 - 📥 **Descargas nativas:** Compatible con el modo sin conexión de Kino en dispositivos móviles.
 
 ## Instalación
-En la app Kino, ve a **Ajustes > Plugins**, introduce https://github.com/cisbo92/tmbd-player-para-kino.git y pulsa **Agregar**.
+En la app Kino, ve a **Ajustes > Plugins**, introduce https://github.com/cisbo92/tmdb-player-para-kino.git y pulsa **Agregar**.
